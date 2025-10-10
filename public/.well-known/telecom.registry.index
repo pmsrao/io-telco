@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "product": null,
+      "version": null,
+      "path": "/.well-known/telecom.registry/customer.yaml"
+    },
+    {
+      "product": "customer",
+      "version": "v1",
+      "path": "/.well-known/telecom.registry/customer_1.yaml"
+    },
+    {
+      "product": null,
+      "version": null,
+      "path": "/.well-known/telecom.registry/payments.yaml"
+    },
+    {
+      "product": "payments",
+      "version": "v1",
+      "path": "/.well-known/telecom.registry/payments_1.yaml"
+    }
+  ]
+}

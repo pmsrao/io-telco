@@ -1,0 +1,31 @@
+# Dynamic: fetch a customer then traverse edges
+query C1 {
+  get_customer(key: "CUST-001") {
+    customer_id
+    full_name
+    status
+    customer_accounts(limit: 5) {
+      account_id
+      status
+      customer_subscriptions(limit: 5) {
+        subscription_id
+        product_id
+        status
+      }
+    }
+  }
+}
+
+# Dynamic: list payments by account using typed filters input
+query P1 {
+  list_payments(filters: { account_id: "ACC-1002", status: "POSTED" }, limit: 10) {
+    payment_id amount currency status created_at
+  }
+}
+
+# Dynamic: list customers with fuzzy search across applies_to columns
+query C2 {
+  list_customers(filters: { q: "rao" }, limit: 10) {
+    customer_id full_name primary_email
+  }
+}

@@ -1,0 +1,72 @@
+# --- Makefile (add/replace these bits) ---
+SHELL := /bin/bash
+
+# Point to your .env; override with `make ENV_FILE=path/to/.env <target>`
+ENV_FILE ?= .env
+
+# Load .env keys as Make variables (safe if file missing)
+export $(shell sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' $(ENV_FILE) 2>/dev/null)
+
+API_BASE ?= http://localhost:8080
+GQL_PATH ?= /graphql
+# API_KEY is used by the server; TELECOM_API_KEY used by client (mcp_call/agent)
+API_KEY  ?= dev-key
+MODEL    ?= llama3.1
+
+MCP_SERVER ?= mcp_server/server.py
+AGENT      ?= chat/agent.py
+MCP_CALL   ?= mcp_call.py
+
+.PHONY: help install run-graphql health mcp-call demo print-env
+
+help:
+	@echo "make install      # install deps (incl. mcp)"
+	@echo "make run-graphql  # start GraphQL API on :8080 (loads .env)"
+	@echo "make health       # GET /healthz"
+	@echo "make mcp-call     # one-off MCP call"
+	@echo "make demo         # two MCP agent prompts"
+	@echo "make print-env    # show effective env vars"
+
+install:
+	set -a; [ -f $(ENV_FILE) ] && . $(ENV_FILE); set +a; \
+	python -m pip install -U pip && \
+	( test -f requirements.txt && python -m pip install -r requirements.txt || true ); \
+	python -m pip install -U "mcp>=0.4.0" anyio httpx python-dotenv ollama
+
+run-graphql:
+	set -a; [ -f $(ENV_FILE) ] && . $(ENV_FILE); set +a; \
+	uvicorn app.main:app --host 0.0.0.0 --port 8080
+
+health:
+	curl -s $(API_BASE)/healthz | jq . || curl -s $(API_BASE)/healthz
+
+mcp-call:
+	set -a; [ -f $(ENV_FILE) ] && . $(ENV_FILE); set +a; \
+	: $${API_KEY:?Please set API_KEY in $(ENV_FILE)}; \
+	TELECOM_API_BASE=$(API_BASE) TELECOM_GQL_PATH=$(GQL_PATH) TELECOM_API_KEY=$${TELECOM_API_KEY:-$${API_KEY}} \
+	python $(MCP_CALL)
+
+print-env:
+	set -a; [ -f $(ENV_FILE) ] && . $(ENV_FILE); set +a; \
+	echo "ENV_FILE=$(ENV_FILE)"; \
+	echo "API_BASE=$(API_BASE)"; \
+	echo "GQL_PATH=$(GQL_PATH)"; \
+	echo "API_KEY=$${API_KEY:-<unset in shell>}"; \
+	echo "TELECOM_API_KEY=$${TELECOM_API_KEY:-<unset in shell>}"; \
+	echo "CATALOG=$${CATALOG:-<unset>}"; \
+	echo "SCHEMA=$${SCHEMA:-<unset>}"; \
+	echo "DATABRICKS_HOST=$${DATABRICKS_HOST:-<unset>}"
+
+demo:
+	set -a; [ -f $(ENV_FILE) ] && . $(ENV_FILE); set +a; \
+	: $${API_KEY:?Please set API_KEY in $(ENV_FILE)}; \
+	export TELECOM_API_BASE=$(API_BASE); \
+	export TELECOM_GQL_PATH=$(GQL_PATH); \
+	export TELECOM_API_KEY=$${TELECOM_API_KEY:-$${API_KEY}}; \
+	echo ">> payments last 30 days"; \
+	python chat/agent.py --server $(MCP_SERVER) \
+		--ask "show POSTED payments for ACC-1002 in the last 30 days"; \
+	echo ""; \
+	echo ">> bill + payments"; \
+	python chat/agent.py --server $(MCP_SERVER) \
+		--ask "get bill BILL-9001 and list its payments"

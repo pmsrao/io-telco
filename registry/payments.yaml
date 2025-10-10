@@ -1,0 +1,134 @@
+data_product: payments
+entities:
+  payments:
+    table: ${CATALOG}.${SCHEMA}.payments
+    key: payment_id
+    filters:
+    - name: from_time
+      type: TIMESTAMP
+      operator: '>='
+      column: created_at
+    - name: to_time
+      type: TIMESTAMP
+      operator: <
+      column: created_at
+    - name: min_amount
+      type: NUMBER
+      operator: '>='
+      column: amount
+    - name: max_amount
+      type: NUMBER
+      operator: <=
+      column: amount
+    - name: account_id
+      type: STRING
+      operator: '='
+    - name: bill_id
+      type: STRING
+      operator: '='
+    - name: status
+      type: STRING
+      operator: '='
+    - name: method
+      type: STRING
+      operator: '='
+    - name: currency
+      type: STRING
+      operator: '='
+    - name: q
+      type: STRING
+      operator: ilike_any
+      columns:
+      - payment_id
+      - account_id
+      - bill_id
+      - method
+      - status
+  bills:
+    table: ${CATALOG}.${SCHEMA}.bills
+    key: bill_id
+    filters:
+    - name: from_time
+      type: TIMESTAMP
+      operator: '>='
+      column: created_at
+    - name: to_time
+      type: TIMESTAMP
+      operator: <
+      column: created_at
+    - name: min_amount
+      type: NUMBER
+      operator: '>='
+      column: amount_due
+    - name: max_amount
+      type: NUMBER
+      operator: <=
+      column: amount_due
+    - name: account_id
+      type: STRING
+      operator: '='
+    - name: bill_id
+      type: STRING
+      operator: '='
+    - name: status
+      type: STRING
+      operator: '='
+    - name: currency
+      type: STRING
+      operator: '='
+    - name: q
+      type: STRING
+      operator: ilike_any
+      columns:
+      - bill_id
+      - account_id
+      - status
+  adjustments:
+    table: ${CATALOG}.${SCHEMA}.adjustments
+    key: adjustment_id
+    filters:
+    - name: from_time
+      type: TIMESTAMP
+      operator: '>='
+      column: created_at
+    - name: to_time
+      type: TIMESTAMP
+      operator: <
+      column: created_at
+    - name: min_amount
+      type: NUMBER
+      operator: '>='
+      column: amount
+    - name: max_amount
+      type: NUMBER
+      operator: <=
+      column: amount
+    - name: account_id
+      type: STRING
+      operator: '='
+    - name: bill_id
+      type: STRING
+      operator: '='
+    - name: status
+      type: STRING
+      operator: '='
+    - name: q
+      type: STRING
+      operator: ilike_any
+      columns:
+      - account_id
+      - bill_id
+      - status
+relationships:
+- name: bills_by_account
+  from_entity: payments
+  to_entity: bills
+  'on':
+  - from: account_id
+    to: account_id
+- name: bill_ref
+  from_entity: payments
+  to_entity: bills
+  'on':
+  - from: bill_id
+    to: bill_id

@@ -1,0 +1,99 @@
+data_product: customer
+entities:
+  customer_profile:
+    table: ${CATALOG}.${SCHEMA}.customer_profile
+    key: customer_id
+    filters:
+    - name: from_time
+      type: TIMESTAMP
+      operator: '>='
+      column: valid_from
+    - name: to_time
+      type: TIMESTAMP
+      operator: <
+      column: valid_from
+    - name: customer_id
+      type: STRING
+      operator: '='
+    - name: status
+      type: STRING
+      operator: '='
+    - name: country
+      type: STRING
+      operator: '='
+    - name: phone
+      type: STRING
+      operator: '='
+    - name: q
+      type: STRING
+      operator: ilike_any
+      columns:
+      - customer_id
+      - full_name
+      - country
+      - status
+  customer_accounts:
+    table: ${CATALOG}.${SCHEMA}.customer_accounts
+    key: account_id
+    filters:
+    - name: from_time
+      type: TIMESTAMP
+      operator: '>='
+      column: created_at
+    - name: to_time
+      type: TIMESTAMP
+      operator: <
+      column: created_at
+    - name: account_id
+      type: STRING
+      operator: '='
+    - name: customer_id
+      type: STRING
+      operator: '='
+    - name: status
+      type: STRING
+      operator: '='
+    - name: q
+      type: STRING
+      operator: ilike_any
+      columns:
+      - account_id
+      - customer_id
+      - status
+  customer_subscriptions:
+    table: ${CATALOG}.${SCHEMA}.customer_subscriptions
+    key: subscription_id
+    filters:
+    - name: from_time
+      type: TIMESTAMP
+      operator: '>='
+      column: created_at
+    - name: to_time
+      type: TIMESTAMP
+      operator: <
+      column: created_at
+    - name: account_id
+      type: STRING
+      operator: '='
+    - name: status
+      type: STRING
+      operator: '='
+    - name: q
+      type: STRING
+      operator: ilike_any
+      columns:
+      - account_id
+      - status
+relationships:
+- name: accounts
+  from_entity: customer_profile
+  to_entity: customer_accounts
+  'on':
+  - from: customer_id
+    to: customer_id
+- name: subscriptions
+  from_entity: customer_accounts
+  to_entity: customer_subscriptions
+  'on':
+  - from: account_id
+    to: account_id

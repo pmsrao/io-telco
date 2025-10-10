@@ -1,0 +1,119 @@
+catalog: ${CATALOG}   # or put telco
+schema:  ${SCHEMA}    # or put silver
+
+products:
+  - product: customer
+    version: v1
+
+    entities:
+      - logical_name: customer_profile
+        primary_key: customer_id
+        columns:
+          - { name: customer_id, type: STRING, nullable: false }
+          - { name: full_name, type: STRING }
+          - { name: primary_email, type: STRING }
+          - { name: phone, type: STRING }
+          - { name: country, type: STRING }
+          - { name: segment, type: STRING }
+          - { name: status, type: STRING }
+          - { name: created_at, type: TIMESTAMP }
+          - { name: updated_at, type: TIMESTAMP }
+
+      - logical_name: customer_accounts
+        primary_key: account_id
+        columns:
+          - { name: account_id, type: STRING, nullable: false }
+          - { name: customer_id, type: STRING }
+          - { name: plan_code, type: STRING }
+          - { name: billing_cycle_day, type: INT }
+          - { name: status, type: STRING }
+          - { name: created_at, type: TIMESTAMP }
+          - { name: updated_at, type: TIMESTAMP }
+
+      - logical_name: customer_subscriptions
+        primary_key: subscription_id
+        columns:
+          - { name: subscription_id, type: STRING, nullable: false }
+          - { name: account_id, type: STRING }
+          - { name: product_id, type: STRING }
+          - { name: status, type: STRING }
+          - { name: start_date, type: DATE }
+          - { name: end_date, type: DATE }
+          - { name: created_at, type: TIMESTAMP }
+          - { name: updated_at, type: TIMESTAMP }
+
+    relationships:
+      - { from: customer_profile, to: customer_accounts, type: ONE_TO_MANY, via: customer_id }
+      - { from: customer_accounts, to: customer_subscriptions, type: ONE_TO_MANY, via: account_id }
+
+    # Optional: override default queries. If omitted, generator makes sensible ones.
+    expose:
+      queries:
+        - get_customer: { entity: customer_profile, by_key: customer_id }
+        - list_customers:
+            entity: customer_profile
+            filters:
+              - { name: country, type: STRING, operator: "=" }
+              - { name: status,  type: STRING, operator: "=" }
+              - { name: q,       type: STRING, operator: "ILIKE", column: "full_name" }
+            pagination: { default_limit: 50, max_limit: 200 }
+            order_by_default: "-updated_at"
+        - list_accounts:
+            entity: customer_accounts
+            filters:
+              - { name: customer_id, type: STRING, operator: "=" }
+            pagination: { default_limit: 50, max_limit: 200 }
+            order_by_default: "-updated_at"
+
+  - product: payments
+    version: v1
+
+    entities:
+      - logical_name: payments
+        primary_key: payment_id
+        columns:
+          - { name: payment_id, type: STRING, nullable: false }
+          - { name: account_id, type: STRING }
+          - { name: bill_id,    type: STRING }
+          - { name: amount,     type: DECIMAL(18,2) }
+          - { name: currency,   type: STRING }
+          - { name: method,     type: STRING }
+          - { name: status,     type: STRING }
+          - { name: created_at, type: TIMESTAMP }
+          - { name: updated_at, type: TIMESTAMP }
+
+      - logical_name: bills
+        primary_key: bill_id
+        columns:
+          - { name: bill_id,    type: STRING, nullable: false }
+          - { name: account_id, type: STRING }
+          - { name: amount_due, type: DECIMAL(18,2) }
+          - { name: status,     type: STRING }
+          - { name: bill_date,  type: DATE }
+
+    relationships:
+      - { from: bills, to: payments, type: ONE_TO_MANY, via: bill_id }
+
+    expose:
+      queries:
+        - get_payment: { entity: payments, by_key: payment_id }
+        - list_payments:
+            entity: payments
+            filters:
+              - { name: account_id, type: STRING, operator: "=" }
+              - { name: status,     type: STRING, operator: "=" }
+              - { name: method,     type: STRING, operator: "=" }
+              - { name: from_time,  type: TIMESTAMP, operator: ">=", column: "created_at" }
+              - { name: to_time,    type: TIMESTAMP, operator: "<",  column: "created_at" }
+            pagination: { default_limit: 50, max_limit: 500 }
+            order_by_default: "-created_at"
+        - get_bill: { entity: bills, by_key: bill_id }
+        - list_bills:
+            entity: bills
+            filters:
+              - { name: account_id, type: STRING, operator: "=" }
+              - { name: status,     type: STRING, operator: "=" }
+              - { name: from_date,  type: DATE, operator: ">=", column: "bill_date" }
+              - { name: to_date,    type: DATE, operator: "<",  column: "bill_date" }
+            pagination: { default_limit: 50, max_limit: 500 }
+            order_by_default: "-bill_date"
