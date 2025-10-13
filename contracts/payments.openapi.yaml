@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Payments Data Product (GraphQL)
   version: v1
-  x-git-sha: d171ad18798898b806c33d7e06a8c49f0779b4fe
+  x-git-sha: ce5c197139a4132b4cb95e6ebaf8d4315005a931
 servers:
 - url: http://127.0.0.1:8000/graphql
 components:
