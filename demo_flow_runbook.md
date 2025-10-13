@@ -2,6 +2,15 @@
 
 This markdown captures the **end-to-end demo flow** for the Telecom Data Product runtime — from spec to live API, complete with narrative points that can be spoken during a demo session.
 
+## 🎯 Demo Paths Available
+
+This system supports **two distinct demo paths**:
+
+1. **🚀 Production MCP Demo** (`make demo-prod`) - Uses the real MCP server for AI agent communication
+2. **🧪 Mock MCP Demo** (`make demo-mock`) - Uses mock registry for contract registration + production MCP for agent communication
+
+Both paths demonstrate the same core functionality but with different MCP components.
+
 ---
 
 ## ⚙️ Setup & Prerequisites
@@ -50,14 +59,17 @@ PY
 ```
 ✅ Expect your Databricks username and schema details printed.
 
-### 🧱 4️⃣ (Optional) Start mock MCP server
-If you don’t have a live MCP server, run the local mock one:
-```bash
-python scripts/mock_mcp.py &
-```
-Expected output: `🚀 Mock MCP server running on http://127.0.0.1:9000`
+### 🧱 4️⃣ MCP Server Setup
 
-Now you’re ready for the full demo run.
+**For Production MCP Demo:**
+- No additional setup needed - the production MCP server (`mcp_server/server.py`) will be used automatically
+- This server communicates with AI agents via stdio protocol
+
+**For Mock MCP Demo:**
+- The mock MCP registry will be started automatically during the demo
+- This simulates a real MCP registry for contract registration
+
+Now you're ready for the full demo run.
 
 ---
 
@@ -85,23 +97,23 @@ make regen
 ```
 **Purpose:** Converts `dp/telecom.yml` → runtime metadata (`registry/*.yaml`) and validates stitched SDL (GraphQL schema).
 
-**Talking point:** “From the product spec, we automatically infer entities, relationships, and filters — these are persisted as registry metadata used at runtime.”
+**Talking point:** "From the product spec, we automatically infer entities, relationships, and filters — these are persisted as registry metadata used at runtime."
 
 ---
 
 ### 2️⃣ Start GraphQL runtime
 ```bash
-uvicorn app.graphql_runtime_app:app --reload --env-file .env
+make run-graphql
 ```
 **Purpose:** Starts metadata-driven runtime that builds schema and resolvers dynamically.
 
 **Check health:**
 ```bash
-curl http://127.0.0.1:8000/health
+make health
 ```
-✅ Expected: `{ "ok": true, "db": "ok" }`
+✅ Expected: `{ "ok": true, "mode": "dynamic" }`
 
-**Talking point:** “The runtime loads the registry, constructs GraphQL schema, wires resolvers to Databricks SQL, and verifies connectivity.”
+**Talking point:** "The runtime loads the registry, constructs GraphQL schema, wires resolvers to Databricks SQL, and verifies connectivity."
 
 ---
 
@@ -111,31 +123,39 @@ make export
 ```
 **Purpose:** Emits per-product contracts to `contracts/`, e.g. `contracts/customer.graphql`, `contracts/payments.openapi.yaml`.
 
-**Talking point:** “These are self-describing contracts — standard GraphQL SDL and OpenAPI definitions — which external systems or agents can introspect or generate clients from.”
+**Talking point:** "These are self-describing contracts — standard GraphQL SDL and OpenAPI definitions — which external systems or agents can introspect or generate clients from."
 
 ---
 
-### 4️⃣ Register contracts with MCP (mock or real)
+### 4️⃣ Choose Your Demo Path
 
-**Option A — with real MCP**
+#### 🚀 **Path A: Production MCP Demo** (Recommended)
 ```bash
-export MCP_URL=https://mcp-server/register
-make register
+make demo-prod
 ```
+**What happens:**
+- Uses the production MCP server (`mcp_server/server.py`) for AI agent communication
+- Demonstrates real MCP protocol communication via stdio
+- Shows natural language → GraphQL query translation
+- **No contract registration needed** - direct agent communication
 
-**Option B — local mock MCP**
+**Talking point:** "This demonstrates the production MCP server in action - AI agents can directly communicate with our GraphQL API using the MCP protocol."
+
+#### 🧪 **Path B: Mock MCP Demo** (Development/Testing)
 ```bash
-python scripts/mock_mcp.py &
-export MCP_URL=http://127.0.0.1:9000/register
-make register
+make demo-mock
 ```
-✅ Expected: `{"status":"ok","name":"customer"}` and `{"status":"ok","name":"payments"}`
+**What happens:**
+- Starts mock MCP registry on port 9000
+- Registers contracts with the mock registry
+- Uses production MCP server for agent communication
+- Shows complete contract registration workflow
 
-**Talking point:** “Now the MCP (agent registry) knows about our Data Products and their GraphQL contracts — enabling agents or other systems to discover and invoke them dynamically.”
+**Talking point:** "This shows the complete workflow including contract registration with an MCP registry, followed by agent communication."
 
 ---
 
-### 5️⃣ Query via GraphQL API
+### 5️⃣ Direct GraphQL API Testing
 ```bash
 python - <<'PY'
 import requests, json
@@ -145,7 +165,9 @@ query {
   list_bills(limit: 5) { bill_id amount_due status }
 }
 """
-r = requests.post("http://127.0.0.1:8000/graphql", json={"query": q})
+r = requests.post("http://127.0.0.1:8080/graphql", 
+                  headers={"x-api-key": "dev-key"}, 
+                  json={"query": q})
 print(json.dumps(r.json(), indent=2))
 PY
 ```
@@ -163,7 +185,7 @@ PY
 }
 ```
 
-**Talking point:** “This query runs live against Databricks SQL — no hand-written resolvers, all metadata-driven.”
+**Talking point:** "This query runs live against Databricks SQL — no hand-written resolvers, all metadata-driven."
 
 ---
 
@@ -174,37 +196,168 @@ PY
 make all
 ```
 
-**Talking point:** “We can evolve the product definition declaratively. The contracts, schema, and registry all stay consistent automatically.”
+**Talking point:** "We can evolve the product definition declaratively. The contracts, schema, and registry all stay consistent automatically."
 
 ---
 
 ## 🧩 Services Running During Demo
-| Component | Purpose | Port |
-|------------|----------|------|
-| GraphQL Runtime | Metadata-driven API layer | `8000` |
+
+### 🚀 Production MCP Demo
+| Component | Purpose | Port/Protocol |
+|------------|----------|---------------|
+| GraphQL Runtime | Metadata-driven API layer | `8080` |
 | Databricks SQL Warehouse | Actual data backend | remote |
-| MCP (mock or real) | Contract registry for agents | `9000` |
+| Production MCP Server | AI agent communication | stdio protocol |
+| CLI Agent | Natural language → GraphQL | local process |
+
+### 🧪 Mock MCP Demo
+| Component | Purpose | Port/Protocol |
+|------------|----------|---------------|
+| GraphQL Runtime | Metadata-driven API layer | `8080` |
+| Databricks SQL Warehouse | Actual data backend | remote |
+| Mock MCP Registry | Contract registration | `9000` |
+| Production MCP Server | AI agent communication | stdio protocol |
+| CLI Agent | Natural language → GraphQL | local process |
+
+---
+
+## 🤖 Production MCP Server Details
+
+### What is the Production MCP Server?
+
+The **Production MCP Server** (`mcp_server/server.py`) is the **real Model Context Protocol server** that enables AI agents to communicate with your GraphQL API. It's not a mock or development tool - it's the actual production component.
+
+### Key Features
+
+#### 🔧 **Tool: `telecom.graphql.run`**
+- **Purpose**: Allows AI agents to execute GraphQL queries against your API
+- **Parameters**: 
+  - `query`: GraphQL query string
+  - `variables`: Optional query variables
+- **Returns**: JSON response from your GraphQL API
+- **Authentication**: Automatically injects API key from environment
+
+#### 📚 **Resources: Schema & Registry Discovery**
+- **`resource://telecom/graphql-sdl`**: Provides GraphQL Schema Definition Language
+- **`resource://telecom/registry-index`**: Registry metadata for agent discovery
+- **`resource://telecom/registry/customer.yaml`**: Customer data product specification
+- **`resource://telecom/registry/payments.yaml`**: Payments data product specification
+
+#### 🔒 **Security & Observability**
+- **API Key Injection**: Automatically adds `x-api-key` header to requests
+- **Correlation IDs**: Tracks requests with unique identifiers
+- **Structured Logging**: JSON-formatted logs for monitoring
+- **Error Handling**: Graceful error responses with context
+
+### How It Works
+
+1. **Agent Communication**: Uses MCP stdio protocol (stdin/stdout)
+2. **Request Forwarding**: Forwards GraphQL queries to your API at `TELECOM_API_BASE`
+3. **Response Processing**: Returns structured JSON responses to agents
+4. **Resource Serving**: Provides schema and registry information for agent discovery
+
+### Environment Variables
+
+```bash
+# Required for MCP server operation
+TELECOM_API_BASE=http://localhost:8080    # Your GraphQL API base URL
+TELECOM_GQL_PATH=/graphql                 # GraphQL endpoint path
+TELECOM_API_KEY=dev-key                   # API key for authentication
+```
+
+### Usage Examples
+
+#### Direct MCP Tool Call
+```bash
+# One-off MCP call
+make mcp-call
+```
+
+#### Agent Integration
+```bash
+# Natural language queries via agent
+make demo-prod
+```
+
+#### Custom Agent Script
+```python
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async with stdio_client(StdioServerParameters(
+    command="python",
+    args=["mcp_server/server.py"]
+)) as (reader, writer):
+    async with ClientSession(reader, writer) as session:
+        await session.initialize()
+        
+        result = await session.call_tool("telecom.graphql.run", {
+            "query": "query { list_payments(limit: 5) { payment_id amount status } }",
+            "variables": {}
+        })
+        
+        print(result.content[0].text)
+```
+
+### Production Deployment
+
+For production deployment:
+
+1. **Environment Setup**: Configure production environment variables
+2. **Process Management**: Use systemd, Docker, or process manager
+3. **Monitoring**: Monitor stdio communication and error logs
+4. **Scaling**: Run multiple instances behind load balancer if needed
 
 ---
 
 ## ✅ Expected Takeaways
-- Metadata → API automation: no manual schema or resolver code.
-- GraphQL + OpenAPI contracts for interoperability.
-- MCP integration for agent discovery.
-- Works across domains — just change the YAML spec.
+- **Metadata → API automation**: No manual schema or resolver code
+- **GraphQL + OpenAPI contracts**: For interoperability
+- **Production MCP integration**: Real AI agent communication
+- **Dual demo paths**: Production vs development workflows
+- **Works across domains**: Just change the YAML spec
 
 ---
 
-## 🔁 Quick Reset Script
+## 🔁 Quick Reset Scripts
+
+### Production MCP Demo Reset
 ```bash
-pkill -f "uvicorn .*graphql_runtime_app" || true
-uvicorn app.graphql_runtime_app:app --reload --env-file .env &
-sleep 2
-make all
+# Stop any running services
+pkill -f "uvicorn.*app.main" || true
+pkill -f "mock_mcp.py" || true
+
+# Start GraphQL API
+make run-graphql &
+sleep 3
+
+# Run production demo
+make demo-prod
+```
+
+### Mock MCP Demo Reset
+```bash
+# Stop any running services
+pkill -f "uvicorn.*app.main" || true
+pkill -f "mock_mcp.py" || true
+
+# Start GraphQL API
+make run-graphql &
+sleep 3
+
+# Run mock demo
+make demo-mock
+```
+
+### Direct API Test
+```bash
 python - <<'PY'
 import requests, json
 q = "query { list_customers(limit:2){customer_id full_name} list_bills(limit:2){bill_id amount_due} }"
-print(json.dumps(requests.post("http://127.0.0.1:8000/graphql", json={"query": q}).json(), indent=2))
+r = requests.post("http://127.0.0.1:8080/graphql", 
+                  headers={"x-api-key": "dev-key"}, 
+                  json={"query": q})
+print(json.dumps(r.json(), indent=2))
 PY
 ```
 

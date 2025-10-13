@@ -17,14 +17,16 @@ MCP_SERVER ?= mcp_server/server.py
 AGENT      ?= chat/agent.py
 MCP_CALL   ?= mcp_call.py
 
-.PHONY: help install run-graphql health mcp-call demo print-env
+.PHONY: help install run-graphql health mcp-call demo demo-mock demo-prod print-env
 
 help:
 	@echo "make install      # install deps (incl. mcp)"
 	@echo "make run-graphql  # start GraphQL API on :8080 (loads .env)"
 	@echo "make health       # GET /healthz"
 	@echo "make mcp-call     # one-off MCP call"
-	@echo "make demo         # two MCP agent prompts"
+	@echo "make demo         # two MCP agent prompts (production MCP)"
+	@echo "make demo-mock    # demo with mock MCP registry"
+	@echo "make demo-prod    # demo with production MCP server"
 	@echo "make print-env    # show effective env vars"
 
 install:
@@ -57,7 +59,10 @@ print-env:
 	echo "SCHEMA=$${SCHEMA:-<unset>}"; \
 	echo "DATABRICKS_HOST=$${DATABRICKS_HOST:-<unset>}"
 
-demo:
+demo: demo-prod
+
+demo-prod:
+	@echo "🚀 Production MCP Demo - Using real MCP server for AI agent communication"
 	set -a; [ -f $(ENV_FILE) ] && . $(ENV_FILE); set +a; \
 	: $${API_KEY:?Please set API_KEY in $(ENV_FILE)}; \
 	export TELECOM_API_BASE=$(API_BASE); \
@@ -70,6 +75,27 @@ demo:
 	echo ">> bill + payments"; \
 	python chat/agent.py --server $(MCP_SERVER) \
 		--ask "get bill BILL-9001 and list its payments"
+
+demo-mock:
+	@echo "🧪 Mock MCP Demo - Using mock registry for contract registration"
+	set -a; [ -f $(ENV_FILE) ] && . $(ENV_FILE); set +a; \
+	: $${API_KEY:?Please set API_KEY in $(ENV_FILE)}; \
+	export TELECOM_API_BASE=$(API_BASE); \
+	export TELECOM_GQL_PATH=$(GQL_PATH); \
+	export TELECOM_API_KEY=$${TELECOM_API_KEY:-$${API_KEY}}; \
+	export MCP_URL=http://127.0.0.1:9000/register; \
+	echo "Starting mock MCP registry..."; \
+	python scripts/mock_mcp.py & \
+	sleep 2; \
+	echo "Registering contracts with mock MCP..."; \
+	make register; \
+	echo "Running agent demo with production MCP server..."; \
+	python chat/agent.py --server $(MCP_SERVER) \
+		--ask "show POSTED payments for ACC-1002 in the last 30 days"; \
+	echo ""; \
+	python chat/agent.py --server $(MCP_SERVER) \
+		--ask "get bill BILL-9001 and list its payments"; \
+	pkill -f "mock_mcp.py" || true
 
 # === Auto contract + registration workflow ===
 .PHONY: regen export register all
