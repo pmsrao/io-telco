@@ -1,0 +1,60 @@
+type payments {
+  payment_id: String
+  account_id: String
+  bill_id: String
+  amount: Decimal
+  currency: String
+  method: String
+  status: String
+  created_at: Timestamp
+  updated_at: Timestamp
+}}
+
+type bills {
+  bill_id: String
+  account_id: String
+  amount_due: Decimal
+  status: String
+  bill_date: Timestamp
+}}
+
+type customer_profile {
+  customer_id: String
+  full_name: String
+  primary_email: String
+  phone: String
+  country: String
+  segment: String
+  status: String
+  created_at: Timestamp
+  updated_at: Timestamp
+}}
+
+type customer_accounts {
+  account_id: String
+  customer_id: String
+  plan_code: String
+  billing_cycle_day: Int
+  status: String
+  created_at: Timestamp
+  updated_at: Timestamp
+}}
+
+type customer_subscriptions {
+  subscription_id: String
+  account_id: String
+  product_id: String
+  status: String
+  start_date: Timestamp
+  end_date: Timestamp
+  created_at: Timestamp
+  updated_at: Timestamp
+}}
+
+type Query {
+  list_payments(limit: Int, offset: Int, order_by: [OrderBy!], filter: JSON): [payments!]
+  list_bills(limit: Int, offset: Int, order_by: [OrderBy!], filter: JSON): [bills!]
+  list_customer_profile(limit: Int, offset: Int, order_by: [OrderBy!], filter: JSON): [customer_profile!]
+  list_customer_accounts(limit: Int, offset: Int, order_by: [OrderBy!], filter: JSON): [customer_accounts!]
+  list_customer_subscriptions(limit: Int, offset: Int, order_by: [OrderBy!], filter: JSON): [customer_subscriptions!]
+}

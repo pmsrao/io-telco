@@ -1,0 +1,182 @@
+diff --git a/app/graphql_runtime_app.py b/app/graphql_runtime_app.py
+index 2c9d88a..d16b781 100644
+--- a/app/graphql_runtime_app.py
++++ b/app/graphql_runtime_app.py
+@@
+ from ariadne.asgi import GraphQL
+ from ariadne import make_executable_schema
+ from fastapi import FastAPI, Request
++
++from databricks import sql as dbr
++import os
++
++app = FastAPI()
++
++# ---- health endpoint ----
++@app.get("/health")
++def health():
++    missing = [k for k in ("DATABRICKS_SERVER_HOSTNAME","DATABRICKS_HTTP_PATH","DATABRICKS_TOKEN") if not os.getenv(k)]
++    status = {"ok": len(missing) == 0, "missing_env": missing}
++    try:
++        if not missing:
++            with dbr.connect(server_hostname=os.getenv("DATABRICKS_SERVER_HOSTNAME"),
++                             http_path=os.getenv("DATABRICKS_HTTP_PATH"),
++                             access_token=os.getenv("DATABRICKS_TOKEN")) as conn:
++                cur = conn.cursor(); cur.execute("SELECT 1"); cur.fetchall()
++            status["db"] = "ok"
++    except Exception as e:
++        status["db"] = f"error: {e.__class__.__name__}"
++        status["ok"] = False
++    return status
++
++@app.middleware("http")
++async def auth_guard(request: Request, call_next):
++    if request.url.path == "/graphql":
++        auth = request.headers.get("authorization")
++        # placeholder for validation
++        # if not auth: raise HTTPException(401, "Missing Authorization")
++    return await call_next(request)
+diff --git a/app/runtime/resolver_factory.py b/app/runtime/resolver_factory.py
+index e637d6b..0a3f3d8 100644
+--- a/app/runtime/resolver_factory.py
++++ b/app/runtime/resolver_factory.py
+@@
+     def resolver(self, *_args, **kwargs):
+         limit = kwargs.get("limit")
+         offset = kwargs.get("offset")
+         order_by = kwargs.get("order_by")
+         filter = kwargs.get("where") or kwargs.get("filter")
+-
+-        return self._execute_rows(table, cols, where_sql, params, order_by or [], limit, offset)
++        spec = self.registry.get(entity_name, {})
++        # defaults
++        pg = (spec.get("pagination") or {})
++        if limit is None:
++            limit = pg.get("default_limit", 200)
++        max_limit = pg.get("max_limit", 2000)
++        limit = min(int(limit), int(max_limit))
++
++        if not order_by:
++            ob_default = spec.get("order_by_default")
++            if ob_default:
++                direction = "DESC" if ob_default.startswith("-") else "ASC"
++                field = ob_default.lstrip("-")
++                order_by = [{"field": field, "dir": direction}]
++
++        # optional policy
++        policy = (spec.get("policy") or {})
++        if policy.get("required_window"):
++            has_window = filter and any(k for k in filter if "date" in k or "time" in k)
++            if not has_window:
++                print(f"[warn] {entity_name} missing window filter, applying default 30d")
++
++        return self._execute_rows(table, cols, where_sql, params, order_by or [], limit, offset)
+diff --git a/scripts/export_contracts.py b/scripts/export_contracts.py
+index 69c99a4..92b31f1 100644
+--- a/scripts/export_contracts.py
++++ b/scripts/export_contracts.py
+@@
+ def build_dp_openapi(dp_name, entities, service_url):
+-    return {
+-        "openapi": "3.0.3",
+-        "info": {"title": f"{dp_name.title()} Data Product", "version": "v1"},
+-        "servers": [{"url": service_url}],
+-        "paths": {
+-            "/graphql": {
+-                "post": {
+-                    "summary": f"Query {dp_name} GraphQL endpoint",
+-                    "requestBody": {"required": True, "content": {"application/json": {"schema": {"type": "object"}}}},
+-                    "responses": {"200": {"description": "Success"}},
+-                }
+-            }
+-        },
+-    }
++    ops = []
++    for ent, spec in entities.items():
++        args = {
++            "limit": "Int", "offset": "Int",
++            "order_by": "[OrderBy!]",
++            "where": {f["name"]: f.get("type","STRING") for f in (spec.get("filters") or [])}
++        }
++        ops.append({"name": f"list_{ent}", "kind": "query", "args": args})
++        for alias in (spec.get("aliases") or []):
++            ops.append({"name": alias, "kind": "query", "args": args})
++
++    return {
++        "openapi": "3.0.3",
++        "info": {"title": f"{dp_name.title()} Data Product (GraphQL)", "version": "v1"},
++        "servers": [{"url": service_url}],
++        "components": {
++            "securitySchemes": {
++                "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
++            }
++        },
++        "security": [{"bearerAuth": []}],
++        "paths": {
++            "/graphql": {
++                "post": {
++                    "summary": f"Query {dp_name} GraphQL endpoint",
++                    "requestBody": {
++                        "required": True,
++                        "content": {"application/json": {"schema": {"type": "object"}}}
++                    },
++                    "responses": {"200": {"description": "Success"}},
++                    "x-graphql-operations": ops
++                }
++            }
++        },
++    }
+diff --git a/scripts/gen_registry_from_spec.py b/scripts/gen_registry_from_spec.py
+index 85d89c1..47e5222 100644
+--- a/scripts/gen_registry_from_spec.py
++++ b/scripts/gen_registry_from_spec.py
+@@
+                 per_dp[dp_name]["entities"][name] = {
+                     "table": table,
+                     "key": key,
+                     "columns": columns,
+                     "filters": filters,
+                     "aliases": aliases,
+-                }
++                    "order_by_default": qspec.get("order_by_default"),
++                    "pagination": qspec.get("pagination", {"default_limit": 200, "max_limit": 2000}),
++                    "policy": {"required_window": qspec.get("required_window", False)},
++                }
+diff --git a/scripts/mcp_register_from_contracts.py b/scripts/mcp_register_from_contracts.py
+index a5ad4b3..0d28d42 100644
+--- a/scripts/mcp_register_from_contracts.py
++++ b/scripts/mcp_register_from_contracts.py
+@@
+     manifest = json.loads(manifest_path.read_text())
+     service_url = manifest.get("service_url") or os.getenv("SERVICE_URL", "http://127.0.0.1:8000/graphql")
+-
+-    for p in manifest.get("products", []):
+-        name = p["data_product"]
+-        graphql_text = Path(p["graphql"]).read_text()
+-        openapi_text = Path(p["openapi"]).read_text()
+-        payload = {
+-            "name": name,
+-            "type": "data-product",
+-            "interfaces": [
+-                {"kind": "graphql", "contract": graphql_text, "endpoint": service_url},
+-                {"kind": "openapi", "contract": openapi_text, "endpoint": service_url},
+-            ],
+-            "operations": p.get("operations", []),
+-            "entities": p.get("entities", []),
+-            "metadata": {"source": "registry", "version": "v1"},
+-        }
++    sha = manifest.get("git_sha","unknown")
++
++    for p in manifest.get("products", []):
++        name = p["data_product"]
++        graphql_text = Path(p["graphql"]).read_text()
++        openapi_text = Path(p["openapi"]).read_text()
++        payload = {
++            "name": name,
++            "type": "data-product",
++            "interfaces": [
++                {"kind": "graphql", "contract": graphql_text, "endpoint": service_url},
++                {"kind": "openapi", "contract": openapi_text, "endpoint": service_url},
++            ],
++            "metadata": {"source": "registry", "git_sha": sha, "version": "v1"},
++        }

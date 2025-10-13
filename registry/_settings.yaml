@@ -1,0 +1,14 @@
+globals:
+  template_vars: ["CATALOG", "SCHEMA", "TENANT", "STAGE"]
+  default_limit: 200
+  max_limit: 2000
+  require_time_window: true
+  default_time_column: created_at
+  auth_header: x-api-key
+  observability:
+    redact_patterns:
+      - '\b\d{10}\b'
+      - '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
+  policies:
+    tenant_scope: "tenant_id = ${TENANT}"
+    time_guard: "${time_col} BETWEEN :from_time AND :to_time"

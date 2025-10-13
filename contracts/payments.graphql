@@ -1,0 +1,31 @@
+scalar Decimal
+scalar Timestamp
+scalar JSON
+
+input OrderBy { field: String!, dir: String }
+
+
+type payments {
+  payment_id: String
+  account_id: String
+  bill_id: String
+  amount: Decimal
+  currency: String
+  method: String
+  status: String
+  created_at: Timestamp
+  updated_at: Timestamp
+}
+
+type bills {
+  bill_id: String
+  account_id: String
+  amount_due: Decimal
+  status: String
+  bill_date: Timestamp
+}
+
+type Query {
+  list_payments(limit: Int, offset: Int, order_by: [OrderBy!], filter: JSON, where: JSON): [payments!]
+  list_bills(limit: Int, offset: Int, order_by: [OrderBy!], filter: JSON, where: JSON): [bills!]
+}

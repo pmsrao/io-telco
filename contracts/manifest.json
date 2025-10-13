@@ -1,0 +1,39 @@
+{
+  "service_url": "http://127.0.0.1:8000/graphql",
+  "git_sha": "2bf98ecc50baf409e679019755573e2034513a99",
+  "products": [
+    {
+      "data_product": "payments",
+      "graphql": "contracts/payments.graphql",
+      "openapi": "contracts/payments.openapi.yaml",
+      "entities": [
+        "bills",
+        "payments"
+      ],
+      "operations": [
+        "get_bill",
+        "get_payment",
+        "list_bills",
+        "list_payments"
+      ]
+    },
+    {
+      "data_product": "customer",
+      "graphql": "contracts/customer.graphql",
+      "openapi": "contracts/customer.openapi.yaml",
+      "entities": [
+        "customer_accounts",
+        "customer_profile",
+        "customer_subscriptions"
+      ],
+      "operations": [
+        "get_customer",
+        "list_accounts",
+        "list_customer_accounts",
+        "list_customer_profile",
+        "list_customer_subscriptions",
+        "list_customers"
+      ]
+    }
+  ]
+}

@@ -70,3 +70,18 @@ demo:
 	echo ">> bill + payments"; \
 	python chat/agent.py --server $(MCP_SERVER) \
 		--ask "get bill BILL-9001 and list its payments"
+
+# === Auto contract + registration workflow ===
+.PHONY: regen export register all
+
+regen:
+	python scripts/gen_registry_from_spec.py dp/telecom.yml registry/ --verbose
+	python -m app.runtime.schema_generator registry > /dev/null
+
+export:
+	python scripts/export_contracts.py
+
+register:
+	python scripts/mcp_register_from_contracts.py --retries 3
+
+all: regen export register		

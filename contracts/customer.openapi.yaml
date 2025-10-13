@@ -1,0 +1,71 @@
+openapi: 3.0.3
+info:
+  title: Customer Data Product (GraphQL)
+  version: v1
+  x-git-sha: 2bf98ecc50baf409e679019755573e2034513a99
+servers:
+- url: http://127.0.0.1:8000/graphql
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+- bearerAuth: []
+paths:
+  /graphql:
+    post:
+      summary: GraphQL endpoint
+      operationId: customer_graphql
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                variables:
+                  type: object
+              required:
+              - query
+      responses:
+        '200':
+          description: GraphQL JSON response
+          content:
+            application/json:
+              schema:
+                type: object
+      x-graphql-operations:
+      - name: list_customer_profile
+        kind: query
+        args: &id001
+          limit: Int
+          offset: Int
+          order_by: '[OrderBy!]'
+          where: {}
+      - name: list_customers
+        kind: query
+        args: *id001
+      - name: list_customer_accounts
+        kind: query
+        args: &id002
+          limit: Int
+          offset: Int
+          order_by: '[OrderBy!]'
+          where: {}
+      - name: list_accounts
+        kind: query
+        args: *id002
+      - name: list_customer_subscriptions
+        kind: query
+        args:
+          limit: Int
+          offset: Int
+          order_by: '[OrderBy!]'
+          where: {}
+x-data-product:
+  name: customer
+  type: graphql

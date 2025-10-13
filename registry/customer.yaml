@@ -3,97 +3,87 @@ entities:
   customer_profile:
     table: ${CATALOG}.${SCHEMA}.customer_profile
     key: customer_id
-    filters:
-    - name: from_time
-      type: TIMESTAMP
-      operator: '>='
-      column: valid_from
-    - name: to_time
-      type: TIMESTAMP
-      operator: <
-      column: valid_from
-    - name: customer_id
-      type: STRING
-      operator: '='
-    - name: status
-      type: STRING
-      operator: '='
-    - name: country
-      type: STRING
-      operator: '='
-    - name: phone
-      type: STRING
-      operator: '='
-    - name: q
-      type: STRING
-      operator: ilike_any
-      columns:
-      - customer_id
-      - full_name
-      - country
-      - status
+    columns:
+      customer_id:
+        scalar: String
+      full_name:
+        scalar: String
+      primary_email:
+        scalar: String
+      phone:
+        scalar: String
+      country:
+        scalar: String
+      segment:
+        scalar: String
+      status:
+        scalar: String
+      created_at:
+        scalar: Timestamp
+      updated_at:
+        scalar: Timestamp
+    filters: []
+    aliases:
+    - get_customer
+    - list_customers
+    order_by_default: -updated_at
+    pagination:
+      default_limit: 50
+      max_limit: 200
+    policy:
+      required_window: false
   customer_accounts:
     table: ${CATALOG}.${SCHEMA}.customer_accounts
     key: account_id
-    filters:
-    - name: from_time
-      type: TIMESTAMP
-      operator: '>='
-      column: created_at
-    - name: to_time
-      type: TIMESTAMP
-      operator: <
-      column: created_at
-    - name: account_id
-      type: STRING
-      operator: '='
-    - name: customer_id
-      type: STRING
-      operator: '='
-    - name: status
-      type: STRING
-      operator: '='
-    - name: q
-      type: STRING
-      operator: ilike_any
-      columns:
-      - account_id
-      - customer_id
-      - status
+    columns:
+      account_id:
+        scalar: String
+      customer_id:
+        scalar: String
+      plan_code:
+        scalar: String
+      billing_cycle_day:
+        scalar: Int
+      status:
+        scalar: String
+      created_at:
+        scalar: Timestamp
+      updated_at:
+        scalar: Timestamp
+    filters: []
+    aliases:
+    - list_accounts
+    order_by_default: -updated_at
+    pagination:
+      default_limit: 50
+      max_limit: 200
+    policy:
+      required_window: false
   customer_subscriptions:
     table: ${CATALOG}.${SCHEMA}.customer_subscriptions
     key: subscription_id
-    filters:
-    - name: from_time
-      type: TIMESTAMP
-      operator: '>='
-      column: created_at
-    - name: to_time
-      type: TIMESTAMP
-      operator: <
-      column: created_at
-    - name: account_id
-      type: STRING
-      operator: '='
-    - name: status
-      type: STRING
-      operator: '='
-    - name: q
-      type: STRING
-      operator: ilike_any
-      columns:
-      - account_id
-      - status
-relationships:
-- name: accounts
-  from_entity: customer_profile
-  to_entity: customer_accounts
-  'on':
-  - from: customer_id
-    to: customer_id
-- name: subscriptions
-  from_entity: customer_accounts
-  to_entity: customer_subscriptions
-  'on':
-  - from: account_id
-    to: account_id
+    columns:
+      subscription_id:
+        scalar: String
+      account_id:
+        scalar: String
+      product_id:
+        scalar: String
+      status:
+        scalar: String
+      start_date:
+        scalar: Timestamp
+      end_date:
+        scalar: Timestamp
+      created_at:
+        scalar: Timestamp
+      updated_at:
+        scalar: Timestamp
+    filters: []
+    aliases: []
+    order_by_default: null
+    pagination:
+      default_limit: 200
+      max_limit: 2000
+    policy:
+      required_window: false
