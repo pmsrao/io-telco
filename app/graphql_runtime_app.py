@@ -40,17 +40,17 @@ async def auth_guard(request: Request, call_next):
     return await call_next(request)
 
 # Build schema at import
+# Build schema + resolvers
 registry = Registry(root="registry")
 sg = SchemaGenerator()
 sdl = sg.stitch(registry)
 
-schema = make_executable_schema(sdl)
 resolvers = ResolverFactory(registry).build()
 
-from ariadne import make_executable_schema, ObjectType
+# IMPORTANT: pass resolvers into make_executable_schema
+schema = make_executable_schema(sdl, resolvers)
 
-query = resolvers or ObjectType("Query")
-
+# Mount GraphQL (no `query=` param on recent Ariadne)
 app.mount(
     "/graphql",
     GraphQL(

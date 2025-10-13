@@ -1,6 +1,6 @@
 {
   "service_url": "http://127.0.0.1:8000/graphql",
-  "git_sha": "2bf98ecc50baf409e679019755573e2034513a99",
+  "git_sha": "d171ad18798898b806c33d7e06a8c49f0779b4fe",
   "products": [
     {
       "data_product": "payments",
