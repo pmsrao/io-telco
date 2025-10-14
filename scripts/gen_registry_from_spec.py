@@ -100,6 +100,9 @@ def generate_registry(spec_path: str, out_dir: str):
                 if isinstance(q, dict):
                     qname, qspec = next(iter(q.items()))
                     if isinstance(qspec, dict) and qspec.get("entity") == name:
+                        # Extract filters from expose.queries if not already defined
+                        if not filters and qspec.get("filters"):
+                            filters = _normalize_filters(qspec.get("filters"))
                         order_by_default = qspec.get("order_by_default", order_by_default)
                         pag = qspec.get("pagination") or {}
                         default_limit = pag.get("default_limit", default_limit)

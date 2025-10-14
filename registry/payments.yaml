@@ -22,7 +22,31 @@ entities:
         scalar: Timestamp
       updated_at:
         scalar: Timestamp
-    filters: []
+    filters:
+    - name: account_id
+      type: STRING
+      op: '='
+      column: account_id
+    - name: bill_id
+      type: STRING
+      op: '='
+      column: bill_id
+    - name: status
+      type: STRING
+      op: '='
+      column: status
+    - name: method
+      type: STRING
+      op: '='
+      column: method
+    - name: from_time
+      type: TIMESTAMP
+      op: '>='
+      column: created_at
+    - name: to_time
+      type: TIMESTAMP
+      op: <=
+      column: created_at
     aliases:
     - get_payment
     - list_payments
@@ -46,7 +70,23 @@ entities:
         scalar: String
       bill_date:
         scalar: Timestamp
-    filters: []
+    filters:
+    - name: account_id
+      type: STRING
+      op: '='
+      column: account_id
+    - name: status
+      type: STRING
+      op: '='
+      column: status
+    - name: from_date
+      type: DATE
+      op: '>='
+      column: bill_date
+    - name: to_date
+      type: DATE
+      op: <=
+      column: bill_date
     aliases:
     - get_bill
     - list_bills

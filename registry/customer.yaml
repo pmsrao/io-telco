@@ -22,7 +22,19 @@ entities:
         scalar: Timestamp
       updated_at:
         scalar: Timestamp
-    filters: []
+    filters:
+    - name: country
+      type: STRING
+      op: '='
+      column: country
+    - name: status
+      type: STRING
+      op: '='
+      column: status
+    - name: q
+      type: STRING
+      op: ILIKE
+      column: full_name
     aliases:
     - get_customer
     - list_customers
@@ -50,7 +62,11 @@ entities:
         scalar: Timestamp
       updated_at:
         scalar: Timestamp
-    filters: []
+    filters:
+    - name: customer_id
+      type: STRING
+      op: '='
+      column: customer_id
     aliases:
     - list_accounts
     order_by_default: -updated_at

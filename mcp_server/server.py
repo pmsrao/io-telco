@@ -29,6 +29,93 @@ API_BASE = os.environ.get("TELECOM_API_BASE", "http://localhost:8080")
 GQL_PATH = os.environ.get("TELECOM_GQL_PATH", "/graphql")
 API_KEY  = os.environ.get("TELECOM_API_KEY", "dev-key")
 
+# ----------------- Discovery Tools -----------------
+@app.tool("telecom.discover.products")
+def discover_products() -> str:
+    """Discover available data products and their contracts"""
+    cid = str(uuid4())
+    t0 = time.time()
+    url = f"{RES_BASE}/.well-known/telecom.registry.index"
+    
+    try:
+        r = httpx.get(url, timeout=30.0)
+        r.raise_for_status()
+        result = r.json()
+        
+        LOG.info(json.dumps({
+            "cid": cid,
+            "tool": "telecom.discover.products",
+            "status": r.status_code,
+            "dur_ms": int((time.time()-t0)*1000),
+            "products_found": len(result.get("data_products", [])),
+        }))
+        
+        return json.dumps(result)
+    except Exception as e:
+        LOG.error(json.dumps({
+            "cid": cid, "tool": "telecom.discover.products",
+            "error": str(e),
+        }))
+        return json.dumps({"error": str(e), "cid": cid})
+
+@app.tool("telecom.get.contract")
+def get_contract(product: str) -> str:
+    """Get contract details for a specific data product"""
+    cid = str(uuid4())
+    t0 = time.time()
+    url = f"{RES_BASE}/.well-known/telecom.registry/{product}.yaml"
+    
+    try:
+        r = httpx.get(url, timeout=30.0)
+        r.raise_for_status()
+        result = r.json()
+        
+        LOG.info(json.dumps({
+            "cid": cid,
+            "tool": "telecom.get.contract",
+            "product": product,
+            "status": r.status_code,
+            "dur_ms": int((time.time()-t0)*1000),
+            "entities": len(result.get("entities", {})),
+        }))
+        
+        return json.dumps(result)
+    except Exception as e:
+        LOG.error(json.dumps({
+            "cid": cid, "tool": "telecom.get.contract",
+            "product": product,
+            "error": str(e),
+        }))
+        return json.dumps({"error": str(e), "cid": cid})
+
+@app.tool("telecom.schema.introspect")
+def schema_introspect() -> str:
+    """Get the complete GraphQL schema for all data products"""
+    cid = str(uuid4())
+    t0 = time.time()
+    url = f"{RES_BASE}/.well-known/telecom.graphql.sdl"
+    
+    try:
+        r = httpx.get(url, timeout=30.0)
+        r.raise_for_status()
+        sdl = r.text
+        
+        LOG.info(json.dumps({
+            "cid": cid,
+            "tool": "telecom.schema.introspect",
+            "status": r.status_code,
+            "dur_ms": int((time.time()-t0)*1000),
+            "sdl_length": len(sdl),
+        }))
+        
+        return sdl
+    except Exception as e:
+        LOG.error(json.dumps({
+            "cid": cid, "tool": "telecom.schema.introspect",
+            "error": str(e),
+        }))
+        return json.dumps({"error": str(e), "cid": cid})
+
 # ----------------- Tool: run GraphQL -----------------
 @app.tool("telecom.graphql.run")
 def graphql_run(query: str, variables: dict | None = None) -> str:

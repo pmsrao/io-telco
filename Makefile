@@ -7,7 +7,7 @@ ENV_FILE ?= .env
 # Load .env keys as Make variables (safe if file missing)
 export $(shell sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' $(ENV_FILE) 2>/dev/null)
 
-API_BASE ?= http://localhost:8080
+API_BASE ?= http://localhost:8000
 GQL_PATH ?= /graphql
 # API_KEY is used by the server; TELECOM_API_KEY used by client (mcp_call/agent)
 API_KEY  ?= dev-key
@@ -37,7 +37,7 @@ install:
 
 run-graphql:
 	set -a; [ -f $(ENV_FILE) ] && . $(ENV_FILE); set +a; \
-	uvicorn app.main:app --host 0.0.0.0 --port 8080
+	uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 health:
 	curl -s $(API_BASE)/healthz | jq . || curl -s $(API_BASE)/healthz

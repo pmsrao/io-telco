@@ -224,7 +224,7 @@ The system supports various filter operators:
 ```bash
 make print-env     # Check environment variables
 make health        # Verify API is running
-curl -v http://localhost:8080/healthz  # Detailed health check
+curl -v http://localhost:8000/healthz  # Detailed health check
 ```
 
 ## 📚 Architecture Details

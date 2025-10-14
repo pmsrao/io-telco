@@ -4,12 +4,66 @@ This markdown captures the **end-to-end demo flow** for the Telecom Data Product
 
 ## 🎯 Demo Paths Available
 
-This system supports **two distinct demo paths**:
+This system supports **three distinct demo paths**:
 
 1. **🚀 Production MCP Demo** (`make demo-prod`) - Uses the real MCP server for AI agent communication
 2. **🧪 Mock MCP Demo** (`make demo-mock`) - Uses mock registry for contract registration + production MCP for agent communication
+3. **🤖 Enhanced Agent Demo** - Uses the new CrewAI + Agent Selector for intelligent query processing
 
-Both paths demonstrate the same core functionality but with different MCP components.
+All paths demonstrate the same core functionality but with different levels of AI agent sophistication.
+
+---
+
+## 🚀 Quick Start Demo Flow
+
+### **Complete Demo in 5 Steps**
+
+1. **Setup Environment**
+   ```bash
+   # Install dependencies
+   pip install -r requirements.txt
+   pip install crewai crewai-tools
+   
+   # Create .env file with your Databricks credentials
+   # (See detailed setup below)
+   ```
+
+2. **Generate & Start System**
+   ```bash
+   # Generate registry and start GraphQL API
+   make regen
+   make run-graphql &
+   sleep 3
+   
+   # Verify system is running
+   make health
+   ```
+
+3. **Test Basic Functionality**
+   ```bash
+   # Test direct GraphQL API
+   curl -s -H "x-api-key: dev-key" -H "Content-Type: application/json" \
+        -d '{"query":"{ list_payments(limit: 3) { payment_id amount status } }"}' \
+        "http://localhost:8000/graphql" | jq .
+   ```
+
+4. **Test Enhanced Agent System**
+   ```bash
+   # Test simple query (uses Simple Agent)
+   python chat/agent_selector.py --ask "show payments for ACC-1002"
+   
+   # Test complex query (uses CrewAI Agent)
+   python chat/agent_selector.py --ask "show me all customers in India with unpaid bills and their payment history"
+   ```
+
+5. **Test Contract Discovery**
+   ```bash
+   # Test well-known endpoints
+   curl -s http://localhost:8000/.well-known/telecom.registry.index | jq .
+   curl -s http://localhost:8000/.well-known/telecom.registry/payments.yaml | jq .
+   ```
+
+**🎉 You've now demonstrated the complete system: metadata-driven API generation, contract discovery, and intelligent AI agent orchestration!**
 
 ---
 
@@ -38,6 +92,11 @@ pip install -r requirements.txt
 If missing `fastapi` or `ariadne` during later steps, install them directly:
 ```bash
 pip install fastapi ariadne uvicorn python-dotenv databricks-sql-connector
+```
+
+**For Enhanced Agent Demo (CrewAI):**
+```bash
+pip install crewai crewai-tools
 ```
 
 ### 🧰 3️⃣ Databricks connectivity test
@@ -129,7 +188,7 @@ make export
 
 ### 4️⃣ Choose Your Demo Path
 
-#### 🚀 **Path A: Production MCP Demo** (Recommended)
+#### 🚀 **Path A: Production MCP Demo** (Basic)
 ```bash
 make demo-prod
 ```
@@ -153,6 +212,34 @@ make demo-mock
 
 **Talking point:** "This shows the complete workflow including contract registration with an MCP registry, followed by agent communication."
 
+#### 🤖 **Path C: Enhanced Agent Demo** (Advanced - NEW!)
+```bash
+# Test the new CrewAI + Agent Selector system
+python chat/agent_selector.py --ask "show POSTED payments for ACC-1002"
+```
+**What happens:**
+- **Intelligent Agent Selection**: Automatically chooses between simple and CrewAI agents based on query complexity
+- **Simple Queries**: Uses existing MCP agent for straightforward requests
+- **Complex Queries**: Uses CrewAI with contract discovery for multi-step operations
+- **Contract-Driven**: All operations discovered from MCP registry metadata
+
+**Talking point:** "This demonstrates our enhanced AI agent system that intelligently selects the appropriate agent based on query complexity, with CrewAI handling complex multi-step operations using contract discovery."
+
+**Additional Enhanced Agent Tests:**
+```bash
+# Test simple query (uses simple agent)
+python chat/agent_selector.py --ask "show payments for ACC-1002"
+
+# Test complex query (uses CrewAI agent)
+python chat/agent_selector.py --ask "show me all customers in India with unpaid bills and their payment history"
+
+# Test MCP discovery tools directly
+python test_crewai.py
+
+# Test CrewAI components individually
+python test_simple_crewai.py
+```
+
 ---
 
 ### 5️⃣ Direct GraphQL API Testing
@@ -165,7 +252,7 @@ query {
   list_bills(limit: 5) { bill_id amount_due status }
 }
 """
-r = requests.post("http://127.0.0.1:8080/graphql", 
+r = requests.post("http://127.0.0.1:8000/graphql", 
                   headers={"x-api-key": "dev-key"}, 
                   json={"query": q})
 print(json.dumps(r.json(), indent=2))
@@ -205,7 +292,7 @@ make all
 ### 🚀 Production MCP Demo
 | Component | Purpose | Port/Protocol |
 |------------|----------|---------------|
-| GraphQL Runtime | Metadata-driven API layer | `8080` |
+| GraphQL Runtime | Metadata-driven API layer | `8000` |
 | Databricks SQL Warehouse | Actual data backend | remote |
 | Production MCP Server | AI agent communication | stdio protocol |
 | CLI Agent | Natural language → GraphQL | local process |
@@ -213,11 +300,22 @@ make all
 ### 🧪 Mock MCP Demo
 | Component | Purpose | Port/Protocol |
 |------------|----------|---------------|
-| GraphQL Runtime | Metadata-driven API layer | `8080` |
+| GraphQL Runtime | Metadata-driven API layer | `8000` |
 | Databricks SQL Warehouse | Actual data backend | remote |
 | Mock MCP Registry | Contract registration | `9000` |
 | Production MCP Server | AI agent communication | stdio protocol |
 | CLI Agent | Natural language → GraphQL | local process |
+
+### 🤖 Enhanced Agent Demo
+| Component | Purpose | Port/Protocol |
+|------------|----------|---------------|
+| GraphQL Runtime | Metadata-driven API layer | `8000` |
+| Databricks SQL Warehouse | Actual data backend | remote |
+| Well-Known Endpoints | Contract discovery | `8000` |
+| Agent Selector | Intelligent agent routing | local process |
+| Simple Agent | Basic MCP communication | local process |
+| CrewAI Agent | Complex query orchestration | local process |
+| MCP Discovery Tools | Contract introspection | local process |
 
 ---
 
@@ -243,6 +341,11 @@ The **Production MCP Server** (`mcp_server/server.py`) is the **real Model Conte
 - **`resource://telecom/registry/customer.yaml`**: Customer data product specification
 - **`resource://telecom/registry/payments.yaml`**: Payments data product specification
 
+#### 🔍 **Enhanced Discovery Tools** (NEW!)
+- **`telecom.discover.products`**: Discover available data products and contracts
+- **`telecom.get.contract`**: Get contract details for specific data products
+- **`telecom.schema.introspect`**: Get complete GraphQL schema for all products
+
 #### 🔒 **Security & Observability**
 - **API Key Injection**: Automatically adds `x-api-key` header to requests
 - **Correlation IDs**: Tracks requests with unique identifiers
@@ -260,7 +363,7 @@ The **Production MCP Server** (`mcp_server/server.py`) is the **real Model Conte
 
 ```bash
 # Required for MCP server operation
-TELECOM_API_BASE=http://localhost:8080    # Your GraphQL API base URL
+TELECOM_API_BASE=http://localhost:8000    # Your GraphQL API base URL
 TELECOM_GQL_PATH=/graphql                 # GraphQL endpoint path
 TELECOM_API_KEY=dev-key                   # API key for authentication
 ```
@@ -310,11 +413,148 @@ For production deployment:
 
 ---
 
+## 🤖 Enhanced Agent System Details (NEW!)
+
+### What is the Enhanced Agent System?
+
+The **Enhanced Agent System** is a sophisticated AI agent architecture that combines the existing MCP-based agent with advanced CrewAI orchestration for complex queries. It provides intelligent agent selection and contract-driven query processing.
+
+### Key Components
+
+#### 🎯 **Agent Selector**
+- **Purpose**: Intelligently chooses between simple and CrewAI agents based on query complexity
+- **Location**: `chat/agent_selector.py`
+- **Logic**: Analyzes natural language queries to determine complexity and routing
+
+#### 🤖 **Simple Agent**
+- **Purpose**: Wrapper for existing MCP-based agent for straightforward queries
+- **Location**: `chat/simple_agent.py`
+- **Use Case**: Single-entity queries, direct lookups, basic filtering
+
+#### 🧠 **CrewAI Agent**
+- **Purpose**: Advanced multi-agent orchestration for complex queries
+- **Location**: `chat/crewai_agent.py`
+- **Use Case**: Multi-entity queries, complex relationships, multi-step operations
+
+#### 🔧 **CrewAI Tools**
+- **MCP Discovery Tool**: Discovers available data products and contracts
+- **Query Builder Tool**: Builds GraphQL queries from natural language and contracts
+- **GraphQL Executor Tool**: Executes queries against the API
+
+#### 👥 **CrewAI Agents**
+- **Planner Agent**: Analyzes user intent and determines required data products
+- **Query Agent**: Builds valid GraphQL queries from contracts
+- **Composer Agent**: Formats results in user-friendly responses
+
+### How Agent Selection Works
+
+#### Simple Query Examples (→ Simple Agent)
+```bash
+# Single entity, basic filtering
+"show payments for ACC-1002"
+"get bill BILL-9001"
+"list customers with status active"
+```
+
+#### Complex Query Examples (→ CrewAI Agent)
+```bash
+# Multiple entities, relationships, analysis
+"show me all customers in India with unpaid bills and their payment history"
+"compare payment patterns between different customer segments"
+"analyze billing trends for the last quarter"
+```
+
+### Testing the Enhanced System
+
+#### 1. **Test Agent Selection**
+```bash
+# Simple query (should use Simple Agent)
+python chat/agent_selector.py --ask "show payments for ACC-1002"
+
+# Complex query (should use CrewAI Agent)
+python chat/agent_selector.py --ask "show me all customers in India with unpaid bills and their payment history"
+```
+
+#### 2. **Test Individual Components**
+```bash
+# Test CrewAI setup
+python test_crewai.py
+
+# Test CrewAI tools directly
+python test_simple_crewai.py
+
+# Test MCP discovery
+python chat/crewai_agent.py --list-products
+python chat/crewai_agent.py --get-contract payments
+```
+
+#### 3. **Test Well-Known Endpoints**
+```bash
+# Test contract discovery endpoints
+curl -s http://localhost:8000/.well-known/telecom.registry.index | jq .
+curl -s http://localhost:8000/.well-known/telecom.registry/payments.yaml | jq .
+curl -s http://localhost:8000/.well-known/telecom.graphql.sdl | head -20
+```
+
+### Expected Behavior
+
+#### Simple Agent Response
+```
+🎯 Selected Agent: SIMPLE
+📝 Query: show payments for ACC-1002
+============================================================
+🤖 Simple Agent processing: show payments for ACC-1002
+============================================================
+SANITIZED QUERY => query($acct:String!,$from:String!,$to:String!){   
+  list_payments(filters:{ account_id:$acct, status:"POSTED", from_time:$from, to_time:$to }, limit:50){     
+    payment_id amount currency status created_at   
+  } 
+}
+Executing tool with window: 2025-09-13T00:00:00Z → 2025-10-13T17:18:06Z
+{
+  "data": {
+    "list_payments": [...]
+  }
+}
+```
+
+#### CrewAI Agent Response
+```
+🎯 Selected Agent: CREWAI
+📝 Query: show me all customers in India with unpaid bills and their payment history
+============================================================
+🤖 CrewAI Agent processing: show me all customers in India with unpaid bills and their payment history
+============================================================
+╭─────────────────────────── Crew Execution Started ───────────────────────────╮
+│ Crew Execution Started                                                      │
+│ Name: crew                                                                  │
+│ ID: 4e277a11-1437-44eb-a886-2c044aafe4db                                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+🚀 Crew: crew
+└── 📋 Task: Data Product Planner
+    Status: Executing Task...
+    └── 🔍 Discovering available data products...
+    └── 📊 Analyzing user intent...
+    └── 🎯 Creating execution plan...
+```
+
+### Benefits of Enhanced System
+
+1. **Intelligent Routing**: Automatically selects the most appropriate agent
+2. **Contract-Driven**: All operations discovered from MCP registry
+3. **Scalable**: Easy to add new data products without code changes
+4. **Backward Compatible**: Existing simple agent continues to work
+5. **Production Ready**: Real MCP integration with contract discovery
+
+---
+
 ## ✅ Expected Takeaways
 - **Metadata → API automation**: No manual schema or resolver code
 - **GraphQL + OpenAPI contracts**: For interoperability
 - **Production MCP integration**: Real AI agent communication
-- **Dual demo paths**: Production vs development workflows
+- **Enhanced Agent System**: Intelligent agent selection with CrewAI orchestration
+- **Contract-driven operations**: All queries built from registry metadata
+- **Three demo paths**: Basic, development, and advanced AI agent workflows
 - **Works across domains**: Just change the YAML spec
 
 ---
@@ -349,16 +589,141 @@ sleep 3
 make demo-mock
 ```
 
+### Enhanced Agent Demo Reset
+```bash
+# Stop any running services
+pkill -f "uvicorn.*app.main" || true
+pkill -f "mock_mcp.py" || true
+
+# Start GraphQL API
+make run-graphql &
+sleep 3
+
+# Test Enhanced Agent System
+echo "Testing Simple Query (should use Simple Agent):"
+python chat/agent_selector.py --ask "show payments for ACC-1002"
+
+echo -e "\nTesting Complex Query (should use CrewAI Agent):"
+python chat/agent_selector.py --ask "show me all customers in India with unpaid bills and their payment history"
+
+echo -e "\nTesting CrewAI Components:"
+python test_crewai.py
+```
+
 ### Direct API Test
 ```bash
 python - <<'PY'
 import requests, json
 q = "query { list_customers(limit:2){customer_id full_name} list_bills(limit:2){bill_id amount_due} }"
-r = requests.post("http://127.0.0.1:8080/graphql", 
+r = requests.post("http://127.0.0.1:8000/graphql", 
                   headers={"x-api-key": "dev-key"}, 
                   json={"query": q})
 print(json.dumps(r.json(), indent=2))
 PY
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues and Solutions
+
+#### **1. GraphQL API Not Starting**
+```bash
+# Check if port 8000 is already in use
+lsof -i :8000
+
+# Kill any existing processes
+pkill -f "uvicorn.*app.main"
+
+# Restart the API
+make run-graphql &
+```
+
+#### **2. CrewAI Import Errors**
+```bash
+# Ensure CrewAI is properly installed
+pip install --upgrade crewai crewai-tools
+
+# Check Python path
+python -c "import crewai; print('CrewAI installed successfully')"
+```
+
+#### **3. MCP Server Connection Issues**
+```bash
+# Check environment variables
+echo $TELECOM_API_BASE
+echo $TELECOM_API_KEY
+
+# Test MCP server directly
+python mcp_server/server.py --help
+```
+
+#### **4. Agent Selector Not Working**
+```bash
+# Check if all required files exist
+ls -la chat/agent_selector.py
+ls -la chat/simple_agent.py
+ls -la chat/crewai_agent.py
+
+# Test individual components
+python chat/simple_agent.py --help
+python chat/crewai_agent.py --help
+```
+
+#### **5. Well-Known Endpoints Not Accessible**
+```bash
+# Check if GraphQL API is running
+curl -s http://localhost:8000/healthz
+
+# Test well-known endpoints
+curl -s http://localhost:8000/.well-known/telecom.registry.index
+```
+
+#### **6. Databricks Connection Issues**
+```bash
+# Test Databricks connectivity
+python -c "
+from databricks import sql
+import os
+conn = sql.connect(
+    server_hostname=os.environ['DATABRICKS_SERVER_HOSTNAME'],
+    http_path=os.environ['DATABRICKS_HTTP_PATH'],
+    access_token=os.environ['DATABRICKS_TOKEN']
+)
+print('Databricks connection successful')
+conn.close()
+"
+```
+
+### **Debug Mode**
+
+Enable verbose logging for troubleshooting:
+```bash
+# Set debug environment variable
+export DEBUG=1
+
+# Run with verbose output
+python chat/agent_selector.py --ask "test query" --verbose
+```
+
+### **Reset Everything**
+
+Complete system reset:
+```bash
+# Stop all services
+pkill -f "uvicorn.*app.main" || true
+pkill -f "mock_mcp.py" || true
+pkill -f "python.*agent" || true
+
+# Clean up any lock files
+rm -f *.lock
+
+# Restart from scratch
+make regen
+make run-graphql &
+sleep 5
+make health
 ```
 
 ---

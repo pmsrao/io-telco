@@ -33,8 +33,8 @@ app = FastAPI(title="Telecom GraphQL (Dynamic)")
 # --------------------------------------------------------------------------------------
 @app.middleware("http")
 async def api_key_guard(request: Request, call_next):
-    # allow healthz without key
-    if request.url.path == "/healthz":
+    # allow healthz and well-known endpoints without key
+    if request.url.path in ["/healthz"] or request.url.path.startswith("/.well-known/"):
         return await call_next(request)
 
     key = request.headers.get("x-api-key")
@@ -100,6 +100,73 @@ async def observability(request: Request, call_next):
 @app.get("/healthz")
 def healthz():
     return {"ok": True, "mode": "dynamic"}
+
+# --------------------------------------------------------------------------------------
+# Well-Known Endpoints for MCP Discovery
+# --------------------------------------------------------------------------------------
+@app.get("/.well-known/telecom.graphql.sdl")
+def get_graphql_sdl():
+    """Return the GraphQL Schema Definition Language"""
+    from app.runtime.registry_loader import Registry
+    from app.runtime.schema_generator import SchemaGenerator
+    
+    registry = Registry(root="registry")
+    sg = SchemaGenerator()
+    sdl = sg.stitch(registry)
+    return sdl
+
+@app.get("/.well-known/telecom.registry.index")
+def get_registry_index():
+    """Return index of available data products and their contracts"""
+    import os
+    import yaml
+    
+    index = {
+        "data_products": [],
+        "contracts": {},
+        "endpoints": {
+            "graphql": "/graphql",
+            "health": "/healthz"
+        }
+    }
+    
+    # Scan registry directory for data products
+    registry_dir = "registry"
+    if os.path.exists(registry_dir):
+        for file in os.listdir(registry_dir):
+            if file.endswith('.yaml') and file != '_settings.yaml':
+                product_name = file.replace('.yaml', '')
+                index["data_products"].append(product_name)
+                
+                # Load contract details
+                try:
+                    with open(os.path.join(registry_dir, file), 'r') as f:
+                        contract = yaml.safe_load(f)
+                        index["contracts"][product_name] = {
+                            "entities": list(contract.get("entities", {}).keys()),
+                            "aliases": []
+                        }
+                        # Extract aliases from entities
+                        for entity_name, entity_data in contract.get("entities", {}).items():
+                            aliases = entity_data.get("aliases", [])
+                            index["contracts"][product_name]["aliases"].extend(aliases)
+                except Exception as e:
+                    LOG.warning(f"Failed to load contract for {product_name}: {e}")
+    
+    return index
+
+@app.get("/.well-known/telecom.registry/{product}.yaml")
+def get_registry_product(product: str):
+    """Return registry YAML for a specific data product"""
+    import os
+    import yaml
+    
+    registry_file = f"registry/{product}.yaml"
+    if not os.path.exists(registry_file):
+        raise HTTPException(status_code=404, detail=f"Data product '{product}' not found")
+    
+    with open(registry_file, 'r') as f:
+        return yaml.safe_load(f)
 
 # --------------------------------------------------------------------------------------
 # Mount the DYNAMIC GraphQL schema at /graphql

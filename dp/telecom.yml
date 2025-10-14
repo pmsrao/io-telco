@@ -101,10 +101,11 @@ products:
             entity: payments
             filters:
               - { name: account_id, type: STRING, operator: "=" }
+              - { name: bill_id,    type: STRING, operator: "=" }
               - { name: status,     type: STRING, operator: "=" }
               - { name: method,     type: STRING, operator: "=" }
               - { name: from_time,  type: TIMESTAMP, operator: ">=", column: "created_at" }
-              - { name: to_time,    type: TIMESTAMP, operator: "<",  column: "created_at" }
+              - { name: to_time,    type: TIMESTAMP, operator: "<=",  column: "created_at" }
             pagination: { default_limit: 50, max_limit: 500 }
             order_by_default: "-created_at"
         - get_bill: { entity: bills, by_key: bill_id }
@@ -114,6 +115,6 @@ products:
               - { name: account_id, type: STRING, operator: "=" }
               - { name: status,     type: STRING, operator: "=" }
               - { name: from_date,  type: DATE, operator: ">=", column: "bill_date" }
-              - { name: to_date,    type: DATE, operator: "<",  column: "bill_date" }
+              - { name: to_date,    type: DATE, operator: "<=",  column: "bill_date" }
             pagination: { default_limit: 50, max_limit: 500 }
             order_by_default: "-bill_date"

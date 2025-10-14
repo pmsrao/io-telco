@@ -87,7 +87,7 @@ def _sub_table_env(s: str) -> str:
 def _connect():
     if dbsql is None:
         raise RuntimeError("databricks-sql-connector not installed")
-    host = os.getenv("DATABRICKS_HOST")
+    host = os.getenv("DATABRICKS_SERVER_HOSTNAME")
     http_path = os.getenv("DATABRICKS_HTTP_PATH")
     token = os.getenv("DATABRICKS_TOKEN")
     if not (host and http_path and token):
