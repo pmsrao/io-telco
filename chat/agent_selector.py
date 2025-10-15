@@ -4,9 +4,17 @@ Chooses between simple agent and CrewAI agent based on query complexity
 """
 
 import re
+import time
+import sys
+import os
 from typing import Optional
+
+# Add the project root to the path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from simple_agent import SimpleAgent
 from crewai_agent import CrewAIAgent
+from monitoring import get_metrics_collector
 
 
 class AgentSelector:
@@ -22,6 +30,7 @@ class AgentSelector:
         """
         self.simple_agent = SimpleAgent(api_base, api_key)
         self.crewai_agent = CrewAIAgent(api_base, api_key)
+        self.metrics_collector = get_metrics_collector()
     
     def select_agent(self, user_input: str) -> str:
         """
@@ -58,7 +67,7 @@ class AgentSelector:
         
         # Check for complex patterns that require CrewAI
         complex_patterns = [
-            r'\b(and|or|with|including|also|additionally)\b',  # Multiple conditions
+            r'\b(and|or|with|including|also|additionally)\s+(?:me|all|the|a|an)\s+',  # Multiple conditions with context
             r'\b(compare|comparison|versus|vs)\b',  # Comparisons
             r'\b(aggregate|sum|total|count|average|max|min)\b',  # Aggregations
             r'\b(relationship|related|associated|linked)\b',  # Relationships
@@ -66,11 +75,19 @@ class AgentSelector:
             r'\b(complex|detailed|comprehensive|complete)\b',  # Complex requests
         ]
         
+        # Special case: "and" followed by "list" indicates multi-entity query
+        # But exclude cases like "get bill X and list its payments" (single entity with action)
+        if re.search(r'\band\s+list\b', user_lower):
+            # Check if it's a single entity with action (e.g., "get bill X and list its payments")
+            if re.search(r'\b(get|fetch|retrieve|show)\s+\w+\s+\w+.*\band\s+list\s+its?\s+\w+', user_lower):
+                return True  # This is a simple query
+            return False
+        
         for pattern in complex_patterns:
             if re.search(pattern, user_lower):
                 return False
         
-        # Check for multiple entities
+        # Check for multiple entities (not filters)
         entities = []
         if any(word in user_lower for word in ['payment', 'payments']):
             entities.append('payments')
@@ -78,13 +95,15 @@ class AgentSelector:
             entities.append('bills')
         if any(word in user_lower for word in ['customer', 'customers']):
             entities.append('customers')
-        if any(word in user_lower for word in ['account', 'accounts']):
-            entities.append('accounts')
         if any(word in user_lower for word in ['subscription', 'subscriptions']):
             entities.append('subscriptions')
         
-        # If multiple entities, use CrewAI
-        if len(entities) > 1:
+        # Only count as multiple entities if they're the main subject, not filters
+        # e.g., "payments for account" = single entity (payments), "customers and payments" = multiple entities
+        entity_indicators = ['show me', 'list', 'get', 'find', 'display']
+        has_entity_indicator = any(indicator in user_lower for indicator in entity_indicators)
+        
+        if len(entities) > 1 and has_entity_indicator:
             return False
         
         # Check for complex time ranges or multiple filters
@@ -114,16 +133,45 @@ class AgentSelector:
         Returns:
             A formatted response
         """
-        agent_type = self.select_agent(user_input)
+        # Start metrics collection
+        query_id = self.metrics_collector.start_query(user_input, "selector")
         
-        print(f"🎯 Selected Agent: {agent_type.upper()}")
-        print(f"📝 Query: {user_input}")
-        print("=" * 60)
-        
-        if agent_type == "simple":
-            return self.simple_agent.process_query(user_input)
-        else:
-            return self.crewai_agent.process_query(user_input)
+        try:
+            # Select agent and record selection timing
+            agent_type = self.select_agent(user_input)
+            self.metrics_collector.record_agent_selection(query_id, agent_type)
+            
+            print(f"🎯 Selected Agent: {agent_type.upper()}")
+            print(f"📝 Query: {user_input}")
+            print("=" * 60)
+            
+            # Record query execution start
+            self.metrics_collector.record_query_execution_start(query_id)
+            
+            # Process query with selected agent
+            if agent_type == "simple":
+                result = self.simple_agent.process_query(user_input)
+            else:
+                result = self.crewai_agent.process_query(user_input)
+            
+            # Record successful completion
+            self.metrics_collector.finish_query(
+                query_id, 
+                success=True, 
+                result_size_bytes=len(str(result))
+            )
+            
+            return result
+            
+        except Exception as e:
+            # Record failed completion
+            self.metrics_collector.finish_query(
+                query_id, 
+                success=False, 
+                error_type=type(e).__name__, 
+                error_message=str(e)
+            )
+            raise
     
     def get_available_products(self) -> str:
         """Get list of available data products using CrewAI agent"""

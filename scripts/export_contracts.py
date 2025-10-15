@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-import os, json, yaml, subprocess
+import os, json, yaml, subprocess, sys
 from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
 from typing import Dict, Any, List
 from app.runtime.registry_loader import Registry
 

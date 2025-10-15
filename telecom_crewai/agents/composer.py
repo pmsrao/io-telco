@@ -12,6 +12,9 @@ class ComposerAgent:
     """Agent that formats and presents query results"""
     
     def __init__(self, tools: List[BaseTool]):
+        # Configure Llama3 via Ollama using CrewAI's native support
+        llm = "ollama/llama3.1"
+        
         self.agent = Agent(
             role="Response Composer",
             goal="Format and present query results in a clear, user-friendly way",
@@ -25,9 +28,13 @@ class ComposerAgent:
             - Formatting results for readability
             - Providing context and explanations
             - Suggesting follow-up questions when appropriate
+            - Correlating data across multiple entities (customers, bills, payments)
+            - Creating comprehensive reports that show relationships between entities
+            - Handling both single-entity and multi-entity query results
             
-            You always ensure the response directly addresses what the user asked for.""",
+            You always ensure the response directly addresses what the user asked for and provides actionable insights.""",
             tools=tools,
+            llm=llm,
             verbose=True,
             allow_delegation=False
         )

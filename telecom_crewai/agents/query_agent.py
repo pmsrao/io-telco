@@ -12,6 +12,9 @@ class QueryAgent:
     """Agent that builds GraphQL queries from user intent and contract data"""
     
     def __init__(self, tools: List[BaseTool]):
+        # Configure Llama3 via Ollama using CrewAI's native support
+        llm = "ollama/llama3.1"
+        
         self.agent = Agent(
             role="GraphQL Query Builder",
             goal="Build valid GraphQL queries from user intent and contract information",
@@ -24,8 +27,32 @@ class QueryAgent:
             - How to map natural language to GraphQL operations
             - How to use contract information to build valid queries
             
-            You always validate your queries against the available schema and contract information.""",
+            You always validate your queries against the available schema and contract information.
+            
+            IMPORTANT: When using tools, pass parameters as simple strings:
+            - For mcp_contract, use product="payments" to get contract details
+            - For graphql_query_builder, use intent="ACTUAL USER QUERY HERE", contract_data="contract json", schema_data=""
+            - For graphql_executor, use query="graphql query", variables={"key": "value"}
+            - For entity_correlator, use query_results="json results", correlation_type="customer_bills_payments"
+            
+            CRITICAL: Always use the ACTUAL user query in the intent parameter, not "user query"!
+            
+            EXAMPLE: If user asks "show me all customers in India with unpaid bills and their payment history",
+            then use intent="show me all customers in India with unpaid bills and their payment history"
+            NOT intent="Get all customers with their latest bills and payments"
+            
+            MANDATORY: When using graphql_query_builder, ALWAYS use the EXACT user query as the intent parameter.
+            Do NOT paraphrase, summarize, or change the user's original words.
+            
+            For complex queries involving multiple entities (customers, bills, payments), 
+            use the flexible graphql_query_builder to build multi-entity queries dynamically.
+            
+            IMPORTANT: Always provide ALL required parameters. If a parameter is missing, 
+            the tool will fail. Use default values when appropriate.
+            
+            Always provide all required parameters. If schema_data is not available, use empty string "".""",
             tools=tools,
+            llm=llm,
             verbose=True,
             allow_delegation=False
         )

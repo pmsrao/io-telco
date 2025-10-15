@@ -44,13 +44,19 @@ class ResolverFactory:
     def _compose_where_and_params(self, spec: Dict[str, Any], flt: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
         where_parts: List[str] = []
         params: Dict[str, Any] = {}
+        import logging
+        logger = logging.getLogger("telecom.graphql")
+        logger.info(f"[DEBUG] Processing filters: {flt}")
+        logger.info(f"[DEBUG] Available filter specs: {[f.get('name') for f in (spec.get('filters') or [])]}")
         for f in (spec.get("filters") or []):
             name = f.get("name")
             if not name or (flt is None) or (name not in flt):
+                logger.info(f"[DEBUG] Skipping filter {name}: not in flt or no name")
                 continue
             op = (f.get("op") or f.get("operator") or "=").upper()
             col = f.get("column") or name
             val = flt[name]
+            logger.info(f"[DEBUG] Processing filter: {name} = {val} (op: {op}, col: {col})")
             if op == "ILIKE" and isinstance(val, str):
                 where_parts.append(f"LOWER({col}) LIKE :{name}")
                 params[name] = f"%{val.lower()}%"
@@ -88,7 +94,10 @@ class ResolverFactory:
             if parts:
                 query += " ORDER BY " + ", ".join(parts)
         query += f" LIMIT {int(limit)} OFFSET {int(offset)}"
-        print(f"[SQL] {query} :: {params}")
+        import logging
+        logger = logging.getLogger("telecom.graphql")
+        logger.info(f"[SQL] {query} :: {params}")
+        logger.info(f"[DEBUG] SQL Query executed successfully")
         host, path, token = self._get_db_env()
         rows: List[Dict[str, Any]] = []
         with dbr.connect(server_hostname=host, http_path=path, access_token=token) as conn:
@@ -111,6 +120,9 @@ class ResolverFactory:
         table = spec.get("table")
         cols = list((spec.get("columns") or {}).keys())
         def resolver(*_, limit=None, offset=None, order_by=None, filter=None, where=None):
+            import logging
+            logger = logging.getLogger("telecom.graphql")
+            logger.info(f"[DEBUG] Resolver called for {ent} with filter: {filter}")
             # where → filter
             if where is not None and filter is None:
                 filter = where
@@ -129,6 +141,8 @@ class ResolverFactory:
                     field = ob_default.lstrip("-")
                     order_by = [{"field": field, "dir": direction}]
             where_sql, params = self._compose_where_and_params(spec, filter or {})
+            logger.info(f"[DEBUG] Generated WHERE clause: {where_sql}")
+            logger.info(f"[DEBUG] Generated params: {params}")
             return self._execute_rows(table, cols, where_sql, params, order_by or [], limit, offset)
         return resolver
 

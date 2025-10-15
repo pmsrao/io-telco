@@ -13,6 +13,7 @@ from .agents.composer import ComposerAgent
 from .tools.mcp_discovery import MCPDiscoveryTool, MCPContractTool, MCPSchemaTool
 from .tools.query_builder import GraphQLQueryBuilderTool
 from .tools.graphql_executor import GraphQLExecutorTool
+from .tools.entity_correlator import EntityCorrelatorTool
 
 
 class TelecomCrew:
@@ -28,6 +29,7 @@ class TelecomCrew:
         self.mcp_schema_tool = MCPSchemaTool(api_base)
         self.query_builder_tool = GraphQLQueryBuilderTool()
         self.graphql_executor_tool = GraphQLExecutorTool(api_base, api_key)
+        self.entity_correlator_tool = EntityCorrelatorTool()
         
         # Initialize agents
         self.planner_agent = PlannerAgent([
@@ -38,7 +40,9 @@ class TelecomCrew:
         
         self.query_agent = QueryAgent([
             self.mcp_contract_tool,
-            self.query_builder_tool
+            self.query_builder_tool,
+            self.graphql_executor_tool,
+            self.entity_correlator_tool
         ])
         
         self.composer_agent = ComposerAgent([])
@@ -60,15 +64,16 @@ class TelecomCrew:
             expected_output="A clear plan for executing the query, including which data products and operations to use"
         )
         
-        # Task 2: Build the GraphQL query
+        # Task 1: Build and execute GraphQL query (simplified)
         query_task = Task(
             description="""
-            Build a valid GraphQL query based on the user's intent and the plan.
-            Use the contract information to ensure the query is valid and will return the requested data.
+            Build a valid GraphQL query based on the user's intent and execute it.
+            Use the graphql_query_builder tool to create the query, then use graphql_executor to run it.
+            Return the final results.
             """,
             agent=self.query_agent.agent,
-            expected_output="A valid GraphQL query ready for execution",
-            context=[plan_task]
+            expected_output="GraphQL query results with data",
+            context=[]
         )
         
         # Task 3: Execute the query
@@ -82,7 +87,18 @@ class TelecomCrew:
             context=[query_task]
         )
         
-        # Task 4: Compose the response
+        # Task 4: Correlate entities (if multi-entity query)
+        correlate_task = Task(
+            description="""
+            If the query involves multiple entities (customers, bills, payments),
+            correlate the data to provide comprehensive results.
+            """,
+            agent=self.query_agent.agent,
+            expected_output="Correlated data across entities",
+            context=[execute_task]
+        )
+        
+        # Task 5: Compose the response
         compose_task = Task(
             description="""
             Format the query results into a clear, user-friendly response.
@@ -94,10 +110,12 @@ class TelecomCrew:
         )
         
         return Crew(
-            agents=[self.planner_agent.agent, self.query_agent.agent, self.composer_agent.agent],
-            tasks=[plan_task, query_task, execute_task, compose_task],
+            agents=[self.query_agent.agent],  # Only query agent for maximum speed
+            tasks=[query_task],  # Single task - just build and execute query
             process=Process.sequential,
-            verbose=True
+            verbose=True,
+            max_iter=2,   # Reduced iterations to prevent loops
+            max_rpm=200   # Lower rate limit for stability
         )
     
     def process_query(self, user_intent: str) -> str:

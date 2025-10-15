@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Customer Data Product (GraphQL)
   version: v1
-  x-git-sha: ce5c197139a4132b4cb95e6ebaf8d4315005a931
+  x-git-sha: 4acbcee7618d76cde9ca23c4db19b13ef99678db
 servers:
 - url: http://127.0.0.1:8000/graphql
 components:
@@ -45,7 +45,10 @@ paths:
           limit: Int
           offset: Int
           order_by: '[OrderBy!]'
-          where: {}
+          where:
+            country: STRING
+            status: STRING
+            q: STRING
       - name: list_customers
         kind: query
         args: *id001
@@ -55,7 +58,8 @@ paths:
           limit: Int
           offset: Int
           order_by: '[OrderBy!]'
-          where: {}
+          where:
+            customer_id: STRING
       - name: list_accounts
         kind: query
         args: *id002

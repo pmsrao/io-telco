@@ -22,14 +22,17 @@ load_dotenv()
 def compute_window_from_text(text: str) -> Tuple[str, str]:
     """
     Very small parser: "last N days" -> [now- N days @00:00Z, now @23:59:59Z]
-    Defaults to 30 days.
+    Defaults to 90 days to include more historical data.
     """
     m = re.search(r"last\s+(\d+)\s*days?", text, re.I)
-    days = int(m.group(1)) if m else 30
+    days = int(m.group(1)) if m else 90  # Increased from 30 to 90 days
     now = datetime.now(timezone.utc)
     start = (now - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
     end = now.replace(microsecond=0)
-    return start.isoformat().replace("+00:00", "Z"), end.isoformat().replace("+00:00", "Z")
+    # Format timestamps to match database format: "YYYY-MM-DDTHH:MM:SS.000+00:00"
+    start_str = start.strftime("%Y-%m-%dT%H:%M:%S.000+00:00")
+    end_str = end.strftime("%Y-%m-%dT%H:%M:%S.000+00:00")
+    return start_str, end_str
 
 
 # ------------------------- Simple intent → GraphQL builder -------------------------

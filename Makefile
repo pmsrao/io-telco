@@ -63,18 +63,40 @@ demo: demo-prod
 
 demo-prod:
 	@echo "🚀 Production MCP Demo - Using real MCP server for AI agent communication"
+	@echo ""
+	@echo "📋 Prerequisites:"
+	@echo "   • GraphQL server must be running on $(API_BASE)"
+	@echo "   • Start it with: make run-graphql"
+	@echo "   • Or manually: uvicorn app.main:app --host 0.0.0.0 --port 8000"
+	@echo ""
+	@echo "🔧 Environment:"
+	@echo "   • API Base: $(API_BASE)"
+	@echo "   • GraphQL Path: $(GQL_PATH)"
+	@echo "   • MCP Server: $(MCP_SERVER)"
+	@echo ""
+	@echo "🧪 Running demo queries..."
+	@echo "============================================================"
 	set -a; [ -f $(ENV_FILE) ] && . $(ENV_FILE); set +a; \
 	: $${API_KEY:?Please set API_KEY in $(ENV_FILE)}; \
 	export TELECOM_API_BASE=$(API_BASE); \
 	export TELECOM_GQL_PATH=$(GQL_PATH); \
 	export TELECOM_API_KEY=$${TELECOM_API_KEY:-$${API_KEY}}; \
-	echo ">> payments last 30 days"; \
-	python chat/agent.py --server $(MCP_SERVER) \
-		--ask "show POSTED payments for ACC-1002 in the last 30 days"; \
+	echo ">> Query 1: payments last 60 days (Agent Selector)"; \
+	python chat/agent_selector.py \
+		--ask "show POSTED payments for ACC-1002 in the last 60 days"; \
 	echo ""; \
-	echo ">> bill + payments"; \
-	python chat/agent.py --server $(MCP_SERVER) \
-		--ask "get bill BILL-9001 and list its payments"
+	echo ">> Query 2: bill + payments (Agent Selector)"; \
+	python chat/agent_selector.py \
+		--ask "get bill BILL-9001 and list its payments"; \
+	echo ""; \
+	echo ">> Query 3: complex multi-entity query (Agent Selector)"; \
+	python chat/agent_selector.py \
+		--ask "show me all customers in India with unpaid bills and their payment history"; \
+	echo ""; \
+	echo "📊 Generating Performance Metrics Report..."; \
+	python -m monitoring.cli report --hours 1; \
+	echo ""; \
+	echo "✅ Demo completed successfully!"
 
 demo-mock:
 	@echo "🧪 Mock MCP Demo - Using mock registry for contract registration"

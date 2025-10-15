@@ -140,7 +140,7 @@ def _compile_where(filters_def: List[Dict[str, Any]], filters_in: Dict[str, Any]
         spec = defs.get(fname)
         if spec is None or fval is None:
             continue
-        op = spec.get("operator", "=").lower()
+        op = (spec.get("operator") or spec.get("op") or "=").lower()
 
         if op == "ilike_any":
             like_val = f"%{fval}%"

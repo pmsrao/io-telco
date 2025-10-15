@@ -18,7 +18,7 @@ class MCPDiscoveryTool(BaseTool):
         super().__init__(**kwargs)
         self.mcp_base_url = mcp_base_url
     
-    def _run(self, action: str = "discover_products") -> str:
+    def _run(self, action: str = "discover_products", **kwargs) -> str:
         """
         Discover data products and contracts
         
@@ -31,10 +31,15 @@ class MCPDiscoveryTool(BaseTool):
             JSON string with discovery results
         """
         try:
-            if action == "discover_products":
+            # Handle different input formats from CrewAI
+            if isinstance(action, dict):
+                action = action.get('action', 'discover_products')
+            
+            if action == "discover_products" or action == "discover":
                 return self._discover_products()
             elif action == "get_contract":
-                return self._get_contract()
+                product = kwargs.get('product', 'payments')
+                return self._get_contract(product)
             else:
                 return json.dumps({"error": f"Unknown action: {action}"})
         except Exception as e:

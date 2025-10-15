@@ -4,3 +4,6 @@ strawberry-graphql==0.209.3
 databricks-sql-connector==3.2.0
 python-dotenv==1.0.1
 PyYAML==6.0.2
+crewai>=0.28.0
+langchain-community>=0.0.20
+ollama>=0.1.0
