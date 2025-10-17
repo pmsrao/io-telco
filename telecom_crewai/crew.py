@@ -19,16 +19,27 @@ from .tools.entity_correlator import EntityCorrelatorTool
 class TelecomCrew:
     """Main crew for handling telecom data product queries"""
     
-    def __init__(self, api_base: str = "http://localhost:8000", api_key: str = "dev-key"):
+    def __init__(self, api_base: str = "http://localhost:8000", api_key: str = "dev-key", use_http_mcp: bool = False):
         self.api_base = api_base
         self.api_key = api_key
+        self.use_http_mcp = use_http_mcp
         
         # Initialize tools
-        self.mcp_discovery_tool = MCPDiscoveryTool(api_base)
-        self.mcp_contract_tool = MCPContractTool(api_base)
-        self.mcp_schema_tool = MCPSchemaTool(api_base)
+        if use_http_mcp:
+            # Use HTTP MCP tools
+            from .tools.http_mcp_tools import HTTPMCPDiscoveryTool, HTTPMCPContractTool, HTTPMCPSchemaTool, HTTPMCPGraphQLExecutorTool
+            self.mcp_discovery_tool = HTTPMCPDiscoveryTool(api_base)
+            self.mcp_contract_tool = HTTPMCPContractTool(api_base)
+            self.mcp_schema_tool = HTTPMCPSchemaTool(api_base)
+            self.graphql_executor_tool = HTTPMCPGraphQLExecutorTool(api_base, api_key)
+        else:
+            # Use stdio MCP tools (original)
+            self.mcp_discovery_tool = MCPDiscoveryTool(api_base)
+            self.mcp_contract_tool = MCPContractTool(api_base)
+            self.mcp_schema_tool = MCPSchemaTool(api_base)
+            self.graphql_executor_tool = GraphQLExecutorTool(api_base, api_key)
+        
         self.query_builder_tool = GraphQLQueryBuilderTool()
-        self.graphql_executor_tool = GraphQLExecutorTool(api_base, api_key)
         self.entity_correlator_tool = EntityCorrelatorTool()
         
         # Initialize agents

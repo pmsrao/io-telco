@@ -20,9 +20,9 @@ from uuid import uuid4
 import httpx
 
 LOG = logging.getLogger("telecom.mcp")
-LOG.setLevel(logging.INFO)
+LOG.setLevel(logging.INFO)  # Use INFO level for cleaner output
 _sh = logging.StreamHandler()
-_sh.setFormatter(logging.Formatter("%(message)s"))
+_sh.setFormatter(logging.Formatter("%(asctime)s - MCP - %(message)s"))
 LOG.addHandler(_sh)
 
 API_BASE = os.environ.get("TELECOM_API_BASE", "http://localhost:8080")
@@ -37,25 +37,20 @@ def discover_products() -> str:
     t0 = time.time()
     url = f"{RES_BASE}/.well-known/telecom.registry.index"
     
+    LOG.info(f"🔧 TOOL INVOKED: telecom.discover.products")
+    
     try:
         r = httpx.get(url, timeout=30.0)
         r.raise_for_status()
         result = r.json()
         
-        LOG.info(json.dumps({
-            "cid": cid,
-            "tool": "telecom.discover.products",
-            "status": r.status_code,
-            "dur_ms": int((time.time()-t0)*1000),
-            "products_found": len(result.get("data_products", [])),
-        }))
+        dur_ms = int((time.time()-t0)*1000)
+        products_count = len(result.get("data_products", []))
+        LOG.info(f"✅ Discovered {products_count} data products ({dur_ms}ms)")
         
         return json.dumps(result)
     except Exception as e:
-        LOG.error(json.dumps({
-            "cid": cid, "tool": "telecom.discover.products",
-            "error": str(e),
-        }))
+        LOG.error(f"❌ Product discovery failed: {str(e)}")
         return json.dumps({"error": str(e), "cid": cid})
 
 @app.tool("telecom.get.contract")
@@ -125,23 +120,24 @@ def graphql_run(query: str, variables: dict | None = None) -> str:
     payload = {"query": query, "variables": variables or {}}
     headers = {"x-api-key": API_KEY, "x-correlation-id": cid, "Content-Type": "application/json"}
 
+    # Log the tool invocation
+    LOG.info(f"🔧 TOOL INVOKED: telecom.graphql.run")
+    LOG.info(f"📝 GraphQL Query: {query}")
+    LOG.info(f"📝 Variables: {json.dumps(variables or {}, indent=2)}")
+
     try:
         r = httpx.post(url, headers=headers, json=payload, timeout=60.0)
         txt = r.text
-        LOG.info(json.dumps({
-            "cid": cid,
-            "tool": "telecom.graphql.run",
-            "status": r.status_code,
-            "dur_ms": int((time.time()-t0)*1000),
-            "bytes": len(txt),
-        }))
+        dur_ms = int((time.time()-t0)*1000)
+        
+        # Log the response
+        LOG.info(f"✅ GraphQL executed successfully ({dur_ms}ms)")
+        LOG.info(f"📊 Response size: {len(txt)} bytes")
+        
         r.raise_for_status()
         return txt  # text so clients can json.loads(...)
     except Exception as e:
-        LOG.error(json.dumps({
-            "cid": cid, "tool": "telecom.graphql.run",
-            "error": str(e),
-        }))
+        LOG.error(f"❌ GraphQL execution failed: {str(e)}")
         # surface error to client as JSON text
         return json.dumps({"error": str(e), "cid": cid})
 

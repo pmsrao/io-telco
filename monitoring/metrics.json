@@ -1,148 +1,44 @@
 [
   {
-    "query_id": "8b4a5ba6-134a-453e-92fa-5e6ed6dc49f9",
-    "timestamp": "2025-10-15T07:13:08.472145+00:00",
-    "agent_type": "simple",
+    "query_id": "1fa876eb-e123-4ed7-b988-52a6f4e7d616",
+    "timestamp": "2025-10-17T12:02:42.501961+00:00",
+    "agent_type": "selector",
     "query_text": "show POSTED payments for ACC-1002 in the last 60 days",
-    "response_time_ms": 1438,
+    "response_time_ms": 1656,
     "success": true,
     "error_type": null,
     "error_message": null,
-    "entities_detected": [
-      "payments"
-    ],
+    "entities_detected": [],
     "query_complexity_score": 0.39999999999999997,
     "agent_selection_time_ms": 0,
-    "query_execution_time_ms": 0,
-    "tool_calls_count": 1,
-    "graphql_queries_count": 3,
-    "result_size_bytes": 541
+    "query_execution_time_ms": 1655,
+    "tool_calls_count": 0,
+    "graphql_queries_count": 0,
+    "result_size_bytes": 220
   },
   {
-    "query_id": "f991dd35-cd72-416f-b7e0-08ae34e05a5b",
-    "timestamp": "2025-10-15T07:13:13.357992+00:00",
-    "agent_type": "simple",
+    "query_id": "bc247133-0e53-4741-bb22-29a3f577a380",
+    "timestamp": "2025-10-17T12:03:06.605611+00:00",
+    "agent_type": "selector",
     "query_text": "get bill BILL-9001 and list its payments",
-    "response_time_ms": 2863,
+    "response_time_ms": 1352,
     "success": true,
     "error_type": null,
     "error_message": null,
-    "entities_detected": [
-      "payments",
-      "bills"
-    ],
+    "entities_detected": [],
     "query_complexity_score": 0.4,
     "agent_selection_time_ms": 0,
-    "query_execution_time_ms": 0,
-    "tool_calls_count": 1,
-    "graphql_queries_count": 5,
-    "result_size_bytes": 582
+    "query_execution_time_ms": 1352,
+    "tool_calls_count": 0,
+    "graphql_queries_count": 0,
+    "result_size_bytes": 229
   },
   {
-    "query_id": "88698da7-5935-4a7e-9f79-2466afb03609",
-    "timestamp": "2025-10-15T07:14:18.700132+00:00",
+    "query_id": "2d16f89e-7214-4843-9c09-ff9508326b28",
+    "timestamp": "2025-10-17T12:04:55.061020+00:00",
     "agent_type": "crewai",
     "query_text": "show me all customers in India with unpaid bills and their payment history",
-    "response_time_ms": 63377,
-    "success": true,
-    "error_type": null,
-    "error_message": null,
-    "entities_detected": [
-      "payments",
-      "bills",
-      "customers"
-    ],
-    "query_complexity_score": 0.8500000000000001,
-    "agent_selection_time_ms": 0,
-    "query_execution_time_ms": 0,
-    "tool_calls_count": 1,
-    "graphql_queries_count": 3,
-    "result_size_bytes": 1656
-  },
-  {
-    "query_id": "808b0c5a-d415-400b-be89-211e3d3650eb",
-    "timestamp": "2025-10-15T11:55:57.881290+00:00",
-    "agent_type": "simple",
-    "query_text": "show POSTED payments for ACC-1002 in the last 60 days",
-    "response_time_ms": 13020,
-    "success": true,
-    "error_type": null,
-    "error_message": null,
-    "entities_detected": [
-      "payments"
-    ],
-    "query_complexity_score": 0.39999999999999997,
-    "agent_selection_time_ms": 0,
-    "query_execution_time_ms": 0,
-    "tool_calls_count": 1,
-    "graphql_queries_count": 3,
-    "result_size_bytes": 541
-  },
-  {
-    "query_id": "5b37a674-8e35-410a-ab53-0efa5edc7e21",
-    "timestamp": "2025-10-15T11:56:23.138595+00:00",
-    "agent_type": "simple",
-    "query_text": "get bill BILL-9001 and list its payments",
-    "response_time_ms": 2764,
-    "success": true,
-    "error_type": null,
-    "error_message": null,
-    "entities_detected": [
-      "payments",
-      "bills"
-    ],
-    "query_complexity_score": 0.4,
-    "agent_selection_time_ms": 0,
-    "query_execution_time_ms": 0,
-    "tool_calls_count": 1,
-    "graphql_queries_count": 5,
-    "result_size_bytes": 582
-  },
-  {
-    "query_id": "87b5f359-5303-411b-9d55-8c794033e9b1",
-    "timestamp": "2025-10-15T12:09:41.057421+00:00",
-    "agent_type": "simple",
-    "query_text": "show POSTED payments for ACC-1002 in the last 60 days",
-    "response_time_ms": 4698,
-    "success": true,
-    "error_type": null,
-    "error_message": null,
-    "entities_detected": [
-      "payments"
-    ],
-    "query_complexity_score": 0.39999999999999997,
-    "agent_selection_time_ms": 0,
-    "query_execution_time_ms": 0,
-    "tool_calls_count": 1,
-    "graphql_queries_count": 3,
-    "result_size_bytes": 541
-  },
-  {
-    "query_id": "40a91a92-1c73-4287-aeb5-81a0cd60cd39",
-    "timestamp": "2025-10-15T12:10:06.323691+00:00",
-    "agent_type": "simple",
-    "query_text": "get bill BILL-9001 and list its payments",
-    "response_time_ms": 2617,
-    "success": true,
-    "error_type": null,
-    "error_message": null,
-    "entities_detected": [
-      "payments",
-      "bills"
-    ],
-    "query_complexity_score": 0.4,
-    "agent_selection_time_ms": 0,
-    "query_execution_time_ms": 0,
-    "tool_calls_count": 1,
-    "graphql_queries_count": 5,
-    "result_size_bytes": 582
-  },
-  {
-    "query_id": "754d1b71-a1e0-47d1-b832-6c7f867d195b",
-    "timestamp": "2025-10-15T12:14:26.197983+00:00",
-    "agent_type": "crewai",
-    "query_text": "show me all customers in India with unpaid bills and their payment history",
-    "response_time_ms": 237193,
+    "response_time_ms": 85576,
     "success": true,
     "error_type": null,
     "error_message": null,
@@ -156,66 +52,6 @@
     "query_execution_time_ms": 0,
     "tool_calls_count": 1,
     "graphql_queries_count": 1,
-    "result_size_bytes": 372
-  },
-  {
-    "query_id": "8ed4e0aa-2d6f-461b-a255-003076e90b6f",
-    "timestamp": "2025-10-15T13:24:01.738692+00:00",
-    "agent_type": "simple",
-    "query_text": "show POSTED payments for ACC-1002 in the last 60 days",
-    "response_time_ms": 4338,
-    "success": true,
-    "error_type": null,
-    "error_message": null,
-    "entities_detected": [
-      "payments"
-    ],
-    "query_complexity_score": 0.39999999999999997,
-    "agent_selection_time_ms": 0,
-    "query_execution_time_ms": 0,
-    "tool_calls_count": 1,
-    "graphql_queries_count": 3,
-    "result_size_bytes": 541
-  },
-  {
-    "query_id": "40b1dec6-a0d7-448b-8592-f8a679850258",
-    "timestamp": "2025-10-15T13:24:27.549025+00:00",
-    "agent_type": "simple",
-    "query_text": "get bill BILL-9001 and list its payments",
-    "response_time_ms": 2558,
-    "success": true,
-    "error_type": null,
-    "error_message": null,
-    "entities_detected": [
-      "payments",
-      "bills"
-    ],
-    "query_complexity_score": 0.4,
-    "agent_selection_time_ms": 0,
-    "query_execution_time_ms": 0,
-    "tool_calls_count": 1,
-    "graphql_queries_count": 5,
-    "result_size_bytes": 582
-  },
-  {
-    "query_id": "18856a70-ad4c-49de-a8d6-ecc3cec9ad95",
-    "timestamp": "2025-10-15T13:26:02.073074+00:00",
-    "agent_type": "crewai",
-    "query_text": "show me all customers in India with unpaid bills and their payment history",
-    "response_time_ms": 71833,
-    "success": true,
-    "error_type": null,
-    "error_message": null,
-    "entities_detected": [
-      "payments",
-      "bills",
-      "customers"
-    ],
-    "query_complexity_score": 0.8500000000000001,
-    "agent_selection_time_ms": 0,
-    "query_execution_time_ms": 0,
-    "tool_calls_count": 1,
-    "graphql_queries_count": 1,
-    "result_size_bytes": 1377
+    "result_size_bytes": 1465
   }
 ]

@@ -25,15 +25,25 @@ class PlannerAgent:
             You have access to the MCP discovery tools to understand what data products and operations are available.
             Always start by discovering available data products before making recommendations.
             
+            CRITICAL WORKFLOW: You MUST follow this exact sequence for ALL queries:
+            1. FIRST: Always call mcp_contract tool to get contract details for the relevant data product(s)
+            2. THEN: Use graphql_query_builder with the contract data to build the query
+            3. FINALLY: Use graphql_executor to execute the query
+            
             IMPORTANT: When using tools, always pass parameters as simple strings or key-value pairs. 
             For mcp_discovery, use action="discover_products" to get available data products.
-            For mcp_contract, use product="payments" (or other product name) to get contract details.
+            For mcp_contract, use product="payments" or product="customer" to get contract details.
             For mcp_schema, call without parameters to get the GraphQL schema.
+            
+            MANDATORY: For multi-entity queries (e.g., "customers with bills and payments"), you MUST:
+            1. Call mcp_contract for EACH data product (e.g., "customer" AND "payments")
+            2. Combine the contract data or call graphql_query_builder with the most relevant contract
+            3. The graphql_query_builder will handle multi-entity logic automatically
             
             CRITICAL: Always pass the EXACT user query to the query builder, not generic text!
             
             For complex queries involving multiple entities (customers, bills, payments), 
-            recommend using the multi_entity_query tool which handles correlation automatically.""",
+            recommend using the graphql_query_builder tool which handles multi-entity queries dynamically.""",
             tools=tools,
             llm=llm,
             verbose=True,

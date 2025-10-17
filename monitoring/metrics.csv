@@ -1,12 +1,4 @@
 query_id,timestamp,agent_type,query_text,response_time_ms,success,error_type,error_message,entities_detected,query_complexity_score,agent_selection_time_ms,query_execution_time_ms,tool_calls_count,graphql_queries_count,result_size_bytes
-8b4a5ba6-134a-453e-92fa-5e6ed6dc49f9,2025-10-15T07:13:08.472145+00:00,simple,show POSTED payments for ACC-1002 in the last 60 days,1438,True,,,['payments'],0.39999999999999997,0,0,1,3,541
-f991dd35-cd72-416f-b7e0-08ae34e05a5b,2025-10-15T07:13:13.357992+00:00,simple,get bill BILL-9001 and list its payments,2863,True,,,"['payments', 'bills']",0.4,0,0,1,5,582
-88698da7-5935-4a7e-9f79-2466afb03609,2025-10-15T07:14:18.700132+00:00,crewai,show me all customers in India with unpaid bills and their payment history,63377,True,,,"['payments', 'bills', 'customers']",0.8500000000000001,0,0,1,3,1656
-808b0c5a-d415-400b-be89-211e3d3650eb,2025-10-15T11:55:57.881290+00:00,simple,show POSTED payments for ACC-1002 in the last 60 days,13020,True,,,['payments'],0.39999999999999997,0,0,1,3,541
-5b37a674-8e35-410a-ab53-0efa5edc7e21,2025-10-15T11:56:23.138595+00:00,simple,get bill BILL-9001 and list its payments,2764,True,,,"['payments', 'bills']",0.4,0,0,1,5,582
-87b5f359-5303-411b-9d55-8c794033e9b1,2025-10-15T12:09:41.057421+00:00,simple,show POSTED payments for ACC-1002 in the last 60 days,4698,True,,,['payments'],0.39999999999999997,0,0,1,3,541
-40a91a92-1c73-4287-aeb5-81a0cd60cd39,2025-10-15T12:10:06.323691+00:00,simple,get bill BILL-9001 and list its payments,2617,True,,,"['payments', 'bills']",0.4,0,0,1,5,582
-754d1b71-a1e0-47d1-b832-6c7f867d195b,2025-10-15T12:14:26.197983+00:00,crewai,show me all customers in India with unpaid bills and their payment history,237193,True,,,"['payments', 'bills', 'customers']",0.8500000000000001,0,0,1,1,372
-8ed4e0aa-2d6f-461b-a255-003076e90b6f,2025-10-15T13:24:01.738692+00:00,simple,show POSTED payments for ACC-1002 in the last 60 days,4338,True,,,['payments'],0.39999999999999997,0,0,1,3,541
-40b1dec6-a0d7-448b-8592-f8a679850258,2025-10-15T13:24:27.549025+00:00,simple,get bill BILL-9001 and list its payments,2558,True,,,"['payments', 'bills']",0.4,0,0,1,5,582
-18856a70-ad4c-49de-a8d6-ecc3cec9ad95,2025-10-15T13:26:02.073074+00:00,crewai,show me all customers in India with unpaid bills and their payment history,71833,True,,,"['payments', 'bills', 'customers']",0.8500000000000001,0,0,1,1,1377
+1fa876eb-e123-4ed7-b988-52a6f4e7d616,2025-10-17T12:02:42.501961+00:00,selector,show POSTED payments for ACC-1002 in the last 60 days,1656,True,,,[],0.39999999999999997,0,1655,0,0,220
+bc247133-0e53-4741-bb22-29a3f577a380,2025-10-17T12:03:06.605611+00:00,selector,get bill BILL-9001 and list its payments,1352,True,,,[],0.4,0,1352,0,0,229
+2d16f89e-7214-4843-9c09-ff9508326b28,2025-10-17T12:04:55.061020+00:00,crewai,show me all customers in India with unpaid bills and their payment history,85576,True,,,"['payments', 'bills', 'customers']",0.8500000000000001,0,0,1,1,1465

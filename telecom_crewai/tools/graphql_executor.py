@@ -5,8 +5,12 @@ Executes GraphQL queries against the telecom API
 
 import json
 import httpx
+import logging
 from crewai.tools import BaseTool
 from typing import Dict, Any
+
+# Set up debug logging
+logger = logging.getLogger(__name__)
 
 
 class GraphQLExecutorTool(BaseTool):
@@ -31,6 +35,9 @@ class GraphQLExecutorTool(BaseTool):
         Returns:
             JSON string with the query results
         """
+        # Log the tool invocation
+        print(f"🔧 TOOL INVOKED: graphql_executor")
+        
         try:
             url = f"{self.api_base}/graphql"
             payload = {
@@ -48,11 +55,8 @@ class GraphQLExecutorTool(BaseTool):
                 
                 result = response.json()
                 
-                # Log the execution
-                print(f"GraphQL Query Executed:")
-                print(f"Query: {query}")
-                print(f"Variables: {json.dumps(variables or {}, indent=2)}")
-                print(f"Result: {json.dumps(result, indent=2)}")
+                print(f"✅ GraphQL executed successfully")
+                print(f"📊 Response size: {len(json.dumps(result))} bytes")
                 
                 return json.dumps(result)
                 

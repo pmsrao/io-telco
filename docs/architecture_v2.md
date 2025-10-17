@@ -33,9 +33,11 @@
 - **Registry (YAML)**: Declarative DP metadata → drives the GraphQL schema & filters.
 - **GraphQL API (FastAPI + Strawberry)**: Builds types/resolvers **at startup** from Registry + table introspection.
 - **MCP Server**: Exposes tools for GraphQL execution and contract discovery.
+  - **HTTP MCP Server**: Standalone HTTP server with real-time logging (primary method)
+  - **Stdio MCP Server**: Traditional subprocess-based communication (legacy support)
 - **Agent Selector**: Intelligent routing between Simple Agent and CrewAI Agent based on query complexity.
-- **Simple Agent**: Fast, reliable agent for single-entity queries with basic filtering.
-- **CrewAI Agent**: Advanced agent for complex multi-entity queries with correlation.
+- **Simple Agent**: Fast, reliable agent for single-entity queries with basic filtering (HTTP MCP).
+- **CrewAI Agent**: Advanced agent for complex multi-entity queries with correlation (HTTP MCP).
 - **Performance Monitoring**: Metrics collection and reporting system.
 
 ### 2.2 Enhanced Dataflow with Agent Selection
@@ -53,8 +55,8 @@ flowchart TD
   end
 
   subgraph Host["Local Host / Container"]
-    MCP["MCP Server<br/>(telecom.graphql.run<br/>mcp_contract<br/>mcp_discovery)"]
-    GQL["GraphQL API<br/>(FastAPI + Strawberry)<br/>Dynamic from Registry"]
+    MCP["HTTP MCP Server<br/>(Port 8001)<br/>(telecom.graphql.run<br/>mcp_contract<br/>mcp_discovery)"]
+    GQL["GraphQL API<br/>(FastAPI + Strawberry)<br/>Dynamic from Registry<br/>(Port 8000)"]
     MON["Performance Monitoring<br/>(Metrics Collection)"]
   end
 
@@ -71,9 +73,9 @@ flowchart TD
   UI --> AS
   AS -->|Simple Query| SA
   AS -->|Complex Query| CA
-  SA -- stdio --> MCP
-  CA -- stdio --> MCP
-  MCP -- HTTP (JSON) --> GQL
+  SA -- HTTP (Port 8001) --> MCP
+  CA -- HTTP (Port 8001) --> MCP
+  MCP -- HTTP (Port 8000) --> GQL
   GQL -- DESCRIBE + SELECT --> UC
   MON --> AS
   MON --> SA
@@ -105,9 +107,67 @@ flowchart TD
 
 ---
 
-## 3) Agent Architecture
+## 3) MCP Communication Methods
 
-### 3.1 Simple Agent
+### 3.1 Stdio MCP Server (Traditional)
+- **Communication**: Subprocess via stdin/stdout
+- **Logging**: Hidden (logs go to subprocess stdout)
+- **Scalability**: One client per process
+- **Use Case**: Simple applications, basic production
+
+### 3.2 HTTP MCP Server (Enhanced)
+- **Communication**: HTTP requests/responses
+- **Logging**: Real-time visible in console
+- **Scalability**: Multiple clients can connect
+- **Use Case**: Development, debugging, production with observability
+
+### 3.3 MCP Server Comparison
+
+| Aspect | Stdio MCP | HTTP MCP |
+|--------|-----------|----------|
+| **Logging** | ❌ Hidden | ✅ **Real-time visible** |
+| **Debugging** | ❌ Hard | ✅ **Easy with curl/Postman** |
+| **Monitoring** | ❌ Limited | ✅ **Full HTTP monitoring** |
+| **Multiple Clients** | ❌ One per process | ✅ **Multiple simultaneous** |
+| **Scalability** | ❌ Limited | ✅ **Better for production** |
+| **Production Ready** | ✅ Yes | ✅ **Recommended** |
+
+### 3.4 HTTP MCP Server Architecture
+
+```mermaid
+flowchart TD
+    subgraph HTTPMCP["HTTP MCP Server (Port 8001)"]
+        API["FastAPI Application"]
+        Tools["MCP Tools"]
+        Logging["Real-time Logging"]
+    end
+    
+    subgraph Agents["AI Agents"]
+        HTTPAgent["HTTP Agent"]
+        CrewAIAgent["CrewAI Agent"]
+    end
+    
+    subgraph GraphQL["GraphQL API (Port 8000)"]
+        GQL["FastAPI + Strawberry"]
+        DB["Databricks SQL"]
+    end
+    
+    HTTPAgent -->|HTTP Requests| API
+    CrewAIAgent -->|HTTP Requests| API
+    API --> Tools
+    Tools -->|GraphQL Queries| GQL
+    GQL --> DB
+    API --> Logging
+    
+    style HTTPMCP fill:#e1f5fe
+    style Logging fill:#c8e6c9
+```
+
+---
+
+## 4) Agent Architecture
+
+### 4.1 Simple Agent
 - **Purpose**: Handle single-entity queries with basic filtering
 - **Performance**: ~2-5 seconds
 - **Use Cases**: 
@@ -116,7 +176,7 @@ flowchart TD
 - **Tools**: MCP-based GraphQL execution
 - **Characteristics**: Fast, reliable, deterministic
 
-### 3.2 CrewAI Agent
+### 4.2 CrewAI Agent
 - **Purpose**: Handle complex multi-entity queries with correlation
 - **Performance**: ~30-60 seconds
 - **Use Cases**:
@@ -176,7 +236,7 @@ def _is_simple_query(self, user_input: str) -> bool:
 
 ---
 
-## 4) Enhanced Registry-First: Metadata Model
+## 5) Enhanced Registry-First: Metadata Model
 
 ### 4.1 Current Registry Structure
 Each Data Product contributes a YAML file under `registry/` with enhanced metadata:
@@ -244,7 +304,7 @@ entities:
 
 ---
 
-## 5) Performance Monitoring & Metrics
+## 6) Performance Monitoring & Metrics
 
 ### 5.1 Metrics Collection
 - **Query Performance**: Response times, success/failure rates
@@ -291,7 +351,7 @@ python -m monitoring.cli report --hours 1
 
 ---
 
-## 6) Enhanced Request Sequence
+## 7) Enhanced Request Sequence
 
 ### 6.1 Simple Query Flow
 ```mermaid
@@ -350,7 +410,7 @@ sequenceDiagram
 
 ---
 
-## 7) Enhanced Repo Layout
+## 8) Enhanced Repo Layout
 
 ```
 .
@@ -397,7 +457,7 @@ sequenceDiagram
 
 ---
 
-## 8) Enhanced Configuration
+## 9) Enhanced Configuration
 
 **`.env` (example)**
 ```
@@ -424,7 +484,7 @@ METRICS_CSV=monitoring/metrics.csv
 
 ---
 
-## 9) Enhanced Developer Workflow
+## 10) Enhanced Developer Workflow
 
 ```bash
 # 1) Install dependencies
@@ -446,7 +506,7 @@ python chat/agent_selector.py --ask "show me all customers in India with unpaid 
 
 ---
 
-## 10) Performance Results
+## 11) Performance Results
 
 ### Before Optimization (v1):
 - **Simple Queries**: 2+ minutes (all routed to CrewAI)
@@ -462,7 +522,7 @@ python chat/agent_selector.py --ask "show me all customers in India with unpaid 
 
 ---
 
-## 11) Key Improvements in v2
+## 12) Key Improvements in v2
 
 ### 11.1 Intelligent Agent Selection
 - **Problem**: All queries routed to CrewAI, causing performance issues
@@ -491,7 +551,7 @@ python chat/agent_selector.py --ask "show me all customers in India with unpaid 
 
 ---
 
-## 12) Future Enhancements (vNext)
+## 13) Future Enhancements (vNext)
 
 1. **Semantic Metadata**: Enhanced YAML with semantic tags for better intent understanding
 2. **LLM-Based Intent Parsing**: Hybrid regex/LLM approach for complex natural language
@@ -502,7 +562,7 @@ python chat/agent_selector.py --ask "show me all customers in India with unpaid 
 
 ---
 
-## 13) Conclusion
+## 14) Conclusion
 
 The v2 architecture represents a significant evolution from the initial implementation:
 

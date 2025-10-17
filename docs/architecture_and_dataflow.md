@@ -17,10 +17,10 @@ sequenceDiagram
     participant API as GraphQL Runtime (FastAPI + Strawberry)
     participant DB as Databricks SQL Warehouse
     participant Exp as export_contracts.py
-    participant MCP as MCP / Agent Registry
+    participant MCP as HTTP MCP Server (Port 8001)
     participant AS as Agent Selector
-    participant SA as Simple Agent
-    participant CA as CrewAI Agent
+    participant SA as Simple Agent (HTTP MCP)
+    participant CA as CrewAI Agent (HTTP MCP)
     participant MON as Performance Monitoring
 
     D->>Git: Edit dp/telecom.yml
@@ -35,32 +35,32 @@ sequenceDiagram
     Exp->>Git: Write contracts/*.graphql + *.openapi.yaml
     Exp->>MCP: Register contracts via mcp_register_from_contracts.py
 
-    note over MCP,AS: Enhanced agent discovery and intelligent routing
+    note over MCP,AS: Enhanced agent discovery and intelligent routing via HTTP MCP
 
     AS->>AS: Analyze query complexity
     alt Simple Query
         AS->>SA: Route to Simple Agent
         SA->>MON: Start metrics collection
-        SA->>MCP: call tool telecom.graphql.run
+        SA->>MCP: HTTP POST /tools/execute (telecom.graphql.run)
         MCP->>API: POST /graphql (single entity)
         API->>DB: Execute SQL (expanded ${CATALOG}.${SCHEMA}.<table>)
         DB-->>API: Return rows
         API-->>MCP: JSON response
-        MCP-->>SA: JSON response
+        MCP-->>SA: HTTP JSON response
         SA->>MON: Record success metrics
     else Complex Query
         AS->>CA: Route to CrewAI Agent
         CA->>MON: Start metrics collection
-        CA->>MCP: call tool mcp_contract
-        MCP-->>CA: Contract data
-        CA->>MCP: call tool graphql_query_builder
-        MCP-->>CA: Generated GraphQL query
-        CA->>MCP: call tool graphql_executor
+        CA->>MCP: HTTP POST /tools/execute (mcp_contract)
+        MCP-->>CA: HTTP JSON Contract data
+        CA->>MCP: HTTP POST /tools/execute (graphql_query_builder)
+        MCP-->>CA: HTTP JSON Generated GraphQL query
+        CA->>MCP: HTTP POST /tools/execute (graphql_executor)
         MCP->>API: POST /graphql (multi-entity)
         API->>DB: Execute SQL (multiple entities)
         DB-->>API: Return correlated rows
         API-->>MCP: JSON response
-        MCP-->>CA: JSON response
+        MCP-->>CA: HTTP JSON response
         CA->>MON: Record success metrics
     end
 ```

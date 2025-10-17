@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import re
+import logging
 from typing import Optional
 
 # Add the project root to the path
@@ -15,23 +16,30 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from telecom_crewai.crew import TelecomCrew
 from monitoring import get_metrics_collector
 
+# Set up focused logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 class CrewAIAgent:
     """CrewAI-based agent for complex telecom data product queries"""
     
-    def __init__(self, api_base: str = None, api_key: str = None):
+    def __init__(self, api_base: str = None, api_key: str = None, use_http_mcp: bool = False):
         """
         Initialize the CrewAI agent
         
         Args:
             api_base: Base URL for the GraphQL API (defaults to env var)
             api_key: API key for authentication (defaults to env var)
+            use_http_mcp: Whether to use HTTP MCP server instead of stdio MCP
         """
         self.api_base = api_base or os.getenv("TELECOM_API_BASE", "http://localhost:8000")
         self.api_key = api_key or os.getenv("TELECOM_API_KEY", "dev-key")
+        self.use_http_mcp = use_http_mcp
+        self.mcp_http_base = os.getenv("MCP_HTTP_BASE", "http://localhost:8001")
         
         # Initialize the crew
-        self.crew = TelecomCrew(self.api_base, self.api_key)
+        self.crew = TelecomCrew(self.api_base, self.api_key, use_http_mcp=use_http_mcp)
         self.metrics_collector = get_metrics_collector()
     
     def process_query(self, user_input: str) -> str:
@@ -51,6 +59,9 @@ class CrewAIAgent:
             print(f"🤖 CrewAI Agent processing: {user_input}")
             print("=" * 60)
             
+            # Log the intent
+            logger.info(f"🎯 INTENT: {user_input}")
+            
             # Detect entities in the query
             entities = self._detect_entities(user_input)
             self.metrics_collector.record_entities_detected(query_id, entities)
@@ -63,9 +74,16 @@ class CrewAIAgent:
             print("=" * 60)
             print("✅ CrewAI Agent completed")
             
+            # Extract and log the final GraphQL query
+            graphql_queries = self._extract_graphql_queries(str(result))
+            if graphql_queries:
+                logger.info(f"📝 FINAL GraphQL Query: {graphql_queries[0]}")
+            else:
+                logger.info(f"📝 FINAL GraphQL Query: (extracted from output)")
+            
             # Count tool calls and GraphQL queries in the result
             tool_calls_count = self._count_tool_calls(result)
-            graphql_queries_count = self._count_graphql_queries(result)
+            graphql_queries_count = len(graphql_queries) if graphql_queries else self._count_graphql_queries(result)
             
             # Record tool calls and GraphQL queries
             for _ in range(tool_calls_count):
@@ -135,24 +153,31 @@ class CrewAIAgent:
         
         return max(1, count)  # At least 1 tool call if we got a response
     
+    def _extract_graphql_queries(self, output_text: str) -> list:
+        """Extract GraphQL queries from the output"""
+        queries = []
+        
+        # Look for complete GraphQL queries
+        query_pattern = r'query\s+\w+\s*\([^)]*\)\s*\{[^}]+\}'
+        matches = re.findall(query_pattern, output_text, re.IGNORECASE | re.DOTALL)
+        queries.extend(matches)
+        
+        # Look for GraphQL query fragments
+        fragment_pattern = r'\{[^}]*list_\w+[^}]*\}'
+        fragment_matches = re.findall(fragment_pattern, output_text, re.IGNORECASE | re.DOTALL)
+        queries.extend(fragment_matches)
+        
+        # Look for queries in tool output
+        tool_query_pattern = r'GraphQL query:\s*([^}]+)'
+        tool_matches = re.findall(tool_query_pattern, output_text, re.IGNORECASE | re.DOTALL)
+        queries.extend(tool_matches)
+        
+        return queries
+    
     def _count_graphql_queries(self, output_text: str) -> int:
         """Count GraphQL queries in the output"""
-        # Look for GraphQL query patterns
-        query_patterns = [
-            r'query\s+\w+',
-            r'list_\w+',
-            r'get_\w+',
-            r'filters:\s*\{',
-            r'GraphQL query:',
-            r'Executing query:',
-        ]
-        
-        count = 0
-        for pattern in query_patterns:
-            matches = re.findall(pattern, output_text, re.IGNORECASE)
-            count += len(matches)
-        
-        return max(1, count)  # At least 1 query if we got a response
+        queries = self._extract_graphql_queries(output_text)
+        return len(queries) if queries else 1  # At least 1 query if we got a response
     
     def get_available_products(self) -> str:
         """Get list of available data products"""

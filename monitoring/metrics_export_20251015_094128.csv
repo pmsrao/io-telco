@@ -1,4 +1,0 @@
-query_id,timestamp,agent_type,query_text,response_time_ms,success,error_type,error_message,entities_detected,query_complexity_score,agent_selection_time_ms,query_execution_time_ms,tool_calls_count,graphql_queries_count,result_size_bytes
-39158ebe-a4c5-4dd9-a722-fdd7789136dd,2025-10-15T04:11:28.355323+00:00,simple,show payments for ACC-1002,101,True,,,['payments'],0.25,0,0,1,1,1024
-4e7b5eca-dbfc-4b89-b202-ed601a60f59f,2025-10-15T04:11:28.557334+00:00,crewai,show me all customers in India with unpaid bills and their payment history,201,True,,,"['customers', 'bills', 'payments']",0.8500000000000001,0,0,3,2,2048
-fff6f63d-0040-4d67-81ed-00cf976b2192,2025-10-15T04:11:28.609633+00:00,simple,invalid query,51,False,ValidationError,Invalid query format,[],0.0,0,0,0,0,0

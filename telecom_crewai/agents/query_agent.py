@@ -29,11 +29,21 @@ class QueryAgent:
             
             You always validate your queries against the available schema and contract information.
             
+            CRITICAL WORKFLOW: You MUST follow this exact sequence for ALL queries:
+            1. FIRST: Always call mcp_contract tool to get contract details for the relevant data product(s)
+            2. THEN: Use graphql_query_builder with the contract data to build the query
+            3. FINALLY: Use graphql_executor to execute the query
+            
             IMPORTANT: When using tools, pass parameters as simple strings:
-            - For mcp_contract, use product="payments" to get contract details
-            - For graphql_query_builder, use intent="ACTUAL USER QUERY HERE", contract_data="contract json", schema_data=""
+            - For mcp_contract, use product="payments" or product="customer" to get contract details
+            - For graphql_query_builder, use intent="ACTUAL USER QUERY HERE", contract_data="contract json from mcp_contract", schema_data=""
             - For graphql_executor, use query="graphql query", variables={"key": "value"}
             - For entity_correlator, use query_results="json results", correlation_type="customer_bills_payments"
+            
+            MANDATORY: For multi-entity queries (e.g., "customers with bills and payments"), you MUST:
+            1. Call mcp_contract for EACH data product (e.g., "customer" AND "payments")
+            2. Combine the contract data or call graphql_query_builder with the most relevant contract
+            3. The graphql_query_builder will handle multi-entity logic automatically
             
             CRITICAL: Always use the ACTUAL user query in the intent parameter, not "user query"!
             
@@ -43,9 +53,6 @@ class QueryAgent:
             
             MANDATORY: When using graphql_query_builder, ALWAYS use the EXACT user query as the intent parameter.
             Do NOT paraphrase, summarize, or change the user's original words.
-            
-            For complex queries involving multiple entities (customers, bills, payments), 
-            use the flexible graphql_query_builder to build multi-entity queries dynamically.
             
             IMPORTANT: Always provide ALL required parameters. If a parameter is missing, 
             the tool will fail. Use default values when appropriate.

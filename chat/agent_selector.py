@@ -15,21 +15,35 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from simple_agent import SimpleAgent
 from crewai_agent import CrewAIAgent
 from monitoring import get_metrics_collector
+import asyncio
+import httpx
+import json
 
 
 class AgentSelector:
     """Selects the appropriate agent based on query complexity"""
     
-    def __init__(self, api_base: str = None, api_key: str = None):
+    def __init__(self, api_base: str = None, api_key: str = None, use_http_mcp: bool = True):
         """
         Initialize the agent selector
         
         Args:
             api_base: Base URL for the GraphQL API
             api_key: API key for authentication
+            use_http_mcp: Whether to use HTTP MCP server for both agents
         """
-        self.simple_agent = SimpleAgent(api_base, api_key)
-        self.crewai_agent = CrewAIAgent(api_base, api_key)
+        self.use_http_mcp = use_http_mcp
+        self.api_base = api_base or os.getenv("TELECOM_API_BASE", "http://localhost:8000")
+        self.api_key = api_key or os.getenv("TELECOM_API_KEY", "dev-key")
+        self.mcp_http_base = os.getenv("MCP_HTTP_BASE", "http://localhost:8001")
+        
+        if use_http_mcp:
+            # Use HTTP MCP for both agents
+            self.crewai_agent = CrewAIAgent(api_base, api_key, use_http_mcp=True)
+        else:
+            # Use stdio MCP for both agents (original behavior)
+            self.simple_agent = SimpleAgent(api_base, api_key, use_http_mcp=False)
+            self.crewai_agent = CrewAIAgent(api_base, api_key, use_http_mcp=False)
         self.metrics_collector = get_metrics_collector()
     
     def select_agent(self, user_input: str) -> str:
@@ -150,7 +164,10 @@ class AgentSelector:
             
             # Process query with selected agent
             if agent_type == "simple":
-                result = self.simple_agent.process_query(user_input)
+                if self.use_http_mcp:
+                    result = self._process_simple_query_http_mcp(user_input)
+                else:
+                    result = self.simple_agent.process_query(user_input)
             else:
                 result = self.crewai_agent.process_query(user_input)
             
@@ -172,6 +189,23 @@ class AgentSelector:
                 error_message=str(e)
             )
             raise
+    
+    def _process_simple_query_http_mcp(self, user_input: str) -> str:
+        """Process simple query using HTTP MCP server"""
+        try:
+            # Import HTTP agent functions
+            from chat.http_agent import nl_to_tool_call, execute_tool_call
+            
+            # Convert natural language to tool call
+            tool_call = nl_to_tool_call(user_input)
+            
+            # Execute the tool call via HTTP MCP
+            result = asyncio.run(execute_tool_call(tool_call, self.mcp_http_base))
+            
+            return result
+            
+        except Exception as e:
+            return f"Error in HTTP MCP processing: {str(e)}"
     
     def get_available_products(self) -> str:
         """Get list of available data products using CrewAI agent"""
@@ -195,8 +229,8 @@ def main():
     
     args = parser.parse_args()
     
-    # Initialize agent selector
-    selector = AgentSelector(args.api_base, args.api_key)
+    # Initialize agent selector with HTTP MCP by default
+    selector = AgentSelector(args.api_base, args.api_key, use_http_mcp=True)
     
     if args.list_products:
         result = selector.get_available_products()

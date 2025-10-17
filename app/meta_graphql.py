@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import re
 import json
+import logging
 from dataclasses import make_dataclass, field as dc_field, fields as dc_fields
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -13,6 +14,10 @@ from fastapi import APIRouter
 from strawberry.fastapi import GraphQLRouter
 from strawberry.schema.config import StrawberryConfig 
 from dotenv import load_dotenv
+
+# Set up focused logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -140,6 +145,7 @@ def _compile_where(filters_def: List[Dict[str, Any]], filters_in: Dict[str, Any]
         spec = defs.get(fname)
         if spec is None or fval is None:
             continue
+        
         op = (spec.get("operator") or spec.get("op") or "=").lower()
 
         if op == "ilike_any":
@@ -149,7 +155,8 @@ def _compile_where(filters_def: List[Dict[str, Any]], filters_in: Dict[str, Any]
                 p = f"p_{fname}_{i}"
                 ors.append(f"{c} ILIKE :{p}")
                 params[p] = like_val
-            clauses.append("(" + " OR ".join(ors) + ")")
+            clause = "(" + " OR ".join(ors) + ")"
+            clauses.append(clause)
             continue
 
         col = spec.get("column") or fname
@@ -159,10 +166,13 @@ def _compile_where(filters_def: List[Dict[str, Any]], filters_in: Dict[str, Any]
         fmt = FILTER_OPS.get(op, FILTER_OPS["="])
         p = f"p_{fname}"
         params[p] = fval
-        clauses.append(fmt.format(col=col, p=p))
+        clause = fmt.format(col=col, p=p)
+        clauses.append(clause)
 
     where = " AND ".join(clauses)
-    return (("WHERE " + where) if where else ""), params
+    final_where = ("WHERE " + where) if where else ""
+    
+    return final_where, params
 
 # --------------------------------------------------------------------------------------
 # Type factories
@@ -311,11 +321,19 @@ def _build_dynamic_query_type():
                                 v = getattr(filters, k)
                                 if v is not None:
                                     fdict[k] = v
+                    
                     where_sql, bind = _compile_where(_filters_def, fdict)
                     bind["lim"] = int(limit)
                     bind["off"] = int(offset)
                     sql = f"SELECT {_cols_sql} FROM {_table_sql} {where_sql} LIMIT :lim OFFSET :off"
+                    
+                    # Log the final SQL query
+                    logger.info(f"🗄️  FINAL SQL Query: {sql}")
+                    logger.info(f"🗄️  SQL Parameters: {bind}")
+                    
                     rows = _fetch_all(sql, bind)
+                    logger.info(f"📊 SQL executed successfully, returned {len(rows)} rows")
+                    
                     return [_GQLEnt(**r) for r in rows]
                 return _impl
 

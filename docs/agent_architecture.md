@@ -29,20 +29,22 @@ The Telecom Data Product system implements an intelligent agent selection strate
 ```python
 class SimpleAgent:
     def process_query(self, user_input: str) -> str:
-        # 1. Detect entities from query
-        entities = self._detect_entities(user_input)
+        if self.use_http_mcp:
+            # Use HTTP MCP for fast communication
+            return self._process_query_http_mcp(user_input)
+        else:
+            # Legacy stdio MCP support
+            return self._process_query_stdio_mcp(user_input)
+    
+    def _process_query_http_mcp(self, user_input: str) -> str:
+        # 1. Convert natural language to tool call
+        tool_call = nl_to_tool_call(user_input)
         
-        # 2. Build GraphQL query with filters
-        graphql_query = self._build_graphql_query(user_input, entities)
+        # 2. Execute via HTTP MCP server
+        result = asyncio.run(execute_tool_call(tool_call, self.mcp_http_base))
         
-        # 3. Execute via MCP tool
-        result = subprocess.run([
-            "python", "chat/agent.py", 
-            "--ask", user_input
-        ], capture_output=True, text=True)
-        
-        # 4. Return formatted result
-        return self._format_response(result.stdout)
+        # 3. Return formatted result
+        return result
 ```
 
 ### 2. CrewAI Agent (`chat/crewai_agent.py`)
@@ -66,14 +68,80 @@ class SimpleAgent:
 ```python
 class CrewAIAgent:
     def process_query(self, user_input: str) -> str:
-        # 1. Initialize CrewAI crew with specialized agents
-        crew = TelecomCrew(self.api_base, self.api_key)
+        # 1. Initialize CrewAI crew with HTTP MCP tools
+        crew = TelecomCrew(self.api_base, self.api_key, use_http_mcp=True)
         
-        # 2. Execute complex query workflow
+        # 2. Execute complex query workflow via HTTP MCP
         result = crew.kickoff(inputs={"user_query": user_input})
         
         # 3. Return formatted multi-entity result
         return self._format_multi_entity_response(result)
+
+class TelecomCrew:
+    def __init__(self, api_base: str, api_key: str, use_http_mcp: bool = True):
+        if use_http_mcp:
+            # Use HTTP MCP tools for real-time logging
+            self.mcp_contract_tool = HTTPMCPContractTool(api_base)
+            self.graphql_executor_tool = HTTPMCPGraphQLExecutorTool(api_base, api_key)
+        else:
+            # Legacy stdio MCP tools
+            self.mcp_contract_tool = MCPContractTool(api_base)
+            self.graphql_executor_tool = GraphQLExecutorTool(api_base, api_key)
+```
+
+---
+
+## Agent Selector Implementation
+
+### Overview
+
+The `AgentSelector` class (`chat/agent_selector.py`) implements intelligent routing between Simple Agent and CrewAI Agent based on query complexity analysis. Both agents now use HTTP MCP for communication.
+
+### Implementation
+
+```python
+class AgentSelector:
+    def __init__(self, api_base: str = None, api_key: str = None, use_http_mcp: bool = True):
+        self.use_http_mcp = use_http_mcp
+        self.api_base = api_base or os.getenv("TELECOM_API_BASE", "http://localhost:8000")
+        self.api_key = api_key or os.getenv("TELECOM_API_KEY", "dev-key")
+        self.mcp_http_base = os.getenv("MCP_HTTP_BASE", "http://localhost:8001")
+        
+        if use_http_mcp:
+            # Use HTTP MCP for both agents
+            self.crewai_agent = CrewAIAgent(api_base, api_key, use_http_mcp=True)
+        else:
+            # Use stdio MCP for both agents (legacy support)
+            self.simple_agent = SimpleAgent(api_base, api_key, use_http_mcp=False)
+            self.crewai_agent = CrewAIAgent(api_base, api_key, use_http_mcp=False)
+    
+    def process_query(self, user_input: str) -> str:
+        # Select agent based on complexity
+        agent_type = self.select_agent(user_input)
+        
+        if agent_type == "simple":
+            if self.use_http_mcp:
+                # Use HTTP MCP for simple queries
+                result = self._process_simple_query_http_mcp(user_input)
+            else:
+                result = self.simple_agent.process_query(user_input)
+        else:
+            # CrewAI agent (always uses HTTP MCP when use_http_mcp=True)
+            result = self.crewai_agent.process_query(user_input)
+        
+        return result
+    
+    def _process_simple_query_http_mcp(self, user_input: str) -> str:
+        """Process simple query using HTTP MCP server"""
+        from chat.http_agent import nl_to_tool_call, execute_tool_call
+        
+        # Convert natural language to tool call
+        tool_call = nl_to_tool_call(user_input)
+        
+        # Execute the tool call via HTTP MCP
+        result = asyncio.run(execute_tool_call(tool_call, self.mcp_http_base))
+        
+        return result
 ```
 
 ---

@@ -1,2 +1,0 @@
-show POSTED payments for ACC-1002 in the last 30 days
-get bill BILL-1001 and list its payments

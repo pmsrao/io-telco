@@ -1,5 +1,6 @@
 """
 Simple Agent wrapper for the existing MCP-based agent
+Supports both stdio MCP and HTTP MCP
 """
 
 import asyncio
@@ -8,6 +9,9 @@ import subprocess
 import sys
 import time
 import re
+import logging
+import httpx
+import json
 from typing import Optional
 
 # Add the project root to the path
@@ -15,20 +19,27 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from monitoring import get_metrics_collector
 
+# Set up focused logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 class SimpleAgent:
     """Wrapper for the existing MCP-based agent"""
     
-    def __init__(self, api_base: str = None, api_key: str = None):
+    def __init__(self, api_base: str = None, api_key: str = None, use_http_mcp: bool = False):
         """
         Initialize the simple agent
         
         Args:
-            api_base: Base URL for the GraphQL API (not used by simple agent)
-            api_key: API key for authentication (not used by simple agent)
+            api_base: Base URL for the GraphQL API
+            api_key: API key for authentication
+            use_http_mcp: Whether to use HTTP MCP server instead of stdio MCP
         """
-        self.api_base = api_base
-        self.api_key = api_key
+        self.api_base = api_base or os.getenv("TELECOM_API_BASE", "http://localhost:8000")
+        self.api_key = api_key or os.getenv("TELECOM_API_KEY", "dev-key")
+        self.use_http_mcp = use_http_mcp
+        self.mcp_http_base = os.getenv("MCP_HTTP_BASE", "http://localhost:8001")
         self.metrics_collector = get_metrics_collector()
     
     def process_query(self, user_input: str) -> str:
@@ -62,18 +73,24 @@ class SimpleAgent:
             # Record MCP server call
             self.metrics_collector.record_tool_call(query_id)
             
-            # Run the existing agent script
-            start_time = time.time()
-            result = subprocess.run([
+            # Log the intent
+            logger.info(f"🎯 INTENT: {user_input}")
+            
+            cmd = [
                 sys.executable, 
                 os.path.join(os.path.dirname(__file__), 'agent.py'),
                 '--server', 'mcp_server/server.py',
                 '--ask', user_input
-            ], 
-            capture_output=True, 
-            text=True, 
-            env=env,
-            cwd=os.path.dirname(os.path.dirname(__file__))
+            ]
+            
+            # Run the existing agent script
+            start_time = time.time()
+            result = subprocess.run(
+                cmd, 
+                capture_output=True, 
+                text=True, 
+                env=env,
+                cwd=os.path.dirname(os.path.dirname(__file__))
             )
             execution_time = time.time() - start_time
             
@@ -82,8 +99,15 @@ class SimpleAgent:
                 print("=" * 60)
                 print("✅ Simple Agent completed")
                 
+                # Extract and log the final GraphQL query
+                graphql_queries = self._extract_graphql_queries(result.stdout)
+                if graphql_queries:
+                    logger.info(f"📝 FINAL GraphQL Query: {graphql_queries[0]}")
+                else:
+                    logger.info(f"📝 FINAL GraphQL Query: (extracted from output)")
+                
                 # Count GraphQL queries in the response
-                graphql_count = self._count_graphql_queries(result.stdout)
+                graphql_count = len(graphql_queries) if graphql_queries else self._count_graphql_queries(result.stdout)
                 for _ in range(graphql_count):
                     self.metrics_collector.record_graphql_query(query_id)
                 
@@ -141,19 +165,23 @@ class SimpleAgent:
         
         return entities
     
+    def _extract_graphql_queries(self, output_text: str) -> list:
+        """Extract GraphQL queries from the output"""
+        queries = []
+        
+        # Look for complete GraphQL queries
+        query_pattern = r'query\s+\w+\s*\([^)]*\)\s*\{[^}]+\}'
+        matches = re.findall(query_pattern, output_text, re.IGNORECASE | re.DOTALL)
+        queries.extend(matches)
+        
+        # Look for GraphQL query fragments
+        fragment_pattern = r'\{[^}]*list_\w+[^}]*\}'
+        fragment_matches = re.findall(fragment_pattern, output_text, re.IGNORECASE | re.DOTALL)
+        queries.extend(fragment_matches)
+        
+        return queries
+    
     def _count_graphql_queries(self, output_text: str) -> int:
         """Count GraphQL queries in the output"""
-        # Look for GraphQL query patterns
-        query_patterns = [
-            r'query\s+\w+',
-            r'list_\w+',
-            r'get_\w+',
-            r'filters:\s*\{',
-        ]
-        
-        count = 0
-        for pattern in query_patterns:
-            matches = re.findall(pattern, output_text, re.IGNORECASE)
-            count += len(matches)
-        
-        return max(1, count)  # At least 1 query if we got a response
+        queries = self._extract_graphql_queries(output_text)
+        return len(queries) if queries else 1  # At least 1 query if we got a response

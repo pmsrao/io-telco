@@ -4,13 +4,15 @@ This markdown captures the **end-to-end demo flow** for the Telecom Data Product
 
 ## 🎯 Demo Paths Available
 
-This system supports **three distinct demo paths**:
+This system supports **five distinct demo paths**:
 
-1. **🚀 Production MCP Demo** (`make demo-prod`) - Uses the real MCP server for AI agent communication
-2. **🧪 Mock MCP Demo** (`make demo-mock`) - Uses mock registry for contract registration + production MCP for agent communication
-3. **🤖 Enhanced Agent Demo** - Uses the new CrewAI + Agent Selector for intelligent query processing
+1. **🚀 Production MCP Demo** (`make demo-prod`) - Uses the real MCP server for AI agent communication (stdio)
+2. **🌐 HTTP MCP Demo** (`make demo-http`) - Uses standalone HTTP MCP server with real-time logging (2 queries)
+3. **🌐 HTTP MCP Full Demo** (`make demo-http-full`) - Uses HTTP MCP server with 3 queries (recommended for production)
+4. **🧪 Mock MCP Demo** (`make demo-mock`) - Uses mock registry for contract registration + production MCP for agent communication
+5. **🤖 Enhanced Agent Demo** - Uses the new CrewAI + Agent Selector for intelligent query processing
 
-All paths demonstrate the same core functionality but with different levels of AI agent sophistication.
+All paths demonstrate the same core functionality but with different levels of AI agent sophistication and communication methods.
 
 ---
 
@@ -120,9 +122,16 @@ PY
 
 ### 🧱 4️⃣ MCP Server Setup
 
-**For Production MCP Demo:**
+**For Production MCP Demo (Stdio):**
 - No additional setup needed - the production MCP server (`mcp_server/server.py`) will be used automatically
 - This server communicates with AI agents via stdio protocol
+- **Note**: Logs are not visible in the main console (they go to subprocess stdout)
+
+**For HTTP MCP Demo:**
+- Start the HTTP MCP server separately: `make run-mcp-http-server`
+- This server runs on port 8001 and provides real-time logging
+- **Benefit**: You can see all tool invocations and responses in real-time
+- **Use case**: Development, debugging, and better visibility into agent interactions
 
 **For Mock MCP Demo:**
 - The mock MCP registry will be started automatically during the demo
@@ -188,7 +197,7 @@ make export
 
 ### 4️⃣ Choose Your Demo Path
 
-#### 🚀 **Path A: Production MCP Demo** (Basic)
+#### 🚀 **Path A: Production MCP Demo** (Basic - Stdio)
 ```bash
 make demo-prod
 ```
@@ -197,10 +206,45 @@ make demo-prod
 - Demonstrates real MCP protocol communication via stdio
 - Shows natural language → GraphQL query translation
 - **No contract registration needed** - direct agent communication
+- **Note**: MCP server logs are not visible (they go to subprocess stdout)
 
-**Talking point:** "This demonstrates the production MCP server in action - AI agents can directly communicate with our GraphQL API using the MCP protocol."
+**Talking point:** "This demonstrates the production MCP server in action - AI agents can directly communicate with our GraphQL API using the MCP protocol via stdio communication."
 
-#### 🧪 **Path B: Mock MCP Demo** (Development/Testing)
+#### 🌐 **Path B: HTTP MCP Demo** (Development/Debugging)
+```bash
+# Start HTTP MCP server in one terminal
+make run-mcp-http-server
+
+# Run demo in another terminal
+make demo-http
+```
+**What happens:**
+- Uses standalone HTTP MCP server on port 8001
+- **Real-time logging visible** - you can see all tool invocations
+- Demonstrates HTTP-based MCP communication
+- Shows natural language → GraphQL query translation
+- **Better for debugging** - full visibility into agent interactions
+
+**Talking point:** "This demonstrates the HTTP MCP server which provides real-time logging and better visibility into how AI agents interact with our GraphQL API. Perfect for development and debugging."
+
+#### 🌐 **Path C: HTTP MCP Full Demo** (Production Recommended)
+```bash
+# Start HTTP MCP server in one terminal
+make run-mcp-http-server
+
+# Run full demo in another terminal
+make demo-http-full
+```
+**What happens:**
+- Uses standalone HTTP MCP server on port 8001
+- **Real-time logging visible** - you can see all tool invocations
+- Runs **3 comprehensive queries** (same as demo-prod)
+- Demonstrates HTTP-based MCP communication
+- **Best for production** - full visibility + comprehensive testing
+
+**Talking point:** "This is our recommended production demo - it combines the comprehensive 3-query testing of demo-prod with the real-time logging and HTTP-based communication of the HTTP MCP server. Perfect for production environments where you need both thorough testing and full observability."
+
+#### 🧪 **Path D: Mock MCP Demo** (Development/Testing)
 ```bash
 make demo-mock
 ```
@@ -212,7 +256,7 @@ make demo-mock
 
 **Talking point:** "This shows the complete workflow including contract registration with an MCP registry, followed by agent communication."
 
-#### 🤖 **Path C: Enhanced Agent Demo** (Advanced - NEW!)
+#### 🤖 **Path E: Enhanced Agent Demo** (Advanced - NEW!)
 ```bash
 # Test the new CrewAI + Agent Selector system
 python chat/agent_selector.py --ask "show POSTED payments for ACC-1002"
@@ -287,15 +331,60 @@ make all
 
 ---
 
+## 🔧 MCP Communication Methods
+
+The system supports different ways to communicate with MCP servers, each with its own benefits:
+
+### 📡 **Stdio MCP (Default)**
+- **How it works**: MCP server runs as subprocess, communication via stdin/stdout
+- **Pros**: Simple, no network setup required
+- **Cons**: Logs not visible, harder to debug
+- **Use case**: Simple applications and production
+
+### 🌐 **HTTP MCP (Recommended for Development)**
+- **How it works**: MCP server runs as standalone HTTP server on port 8001
+- **Pros**: Real-time logging, easy debugging, multiple clients
+- **Cons**: Requires network setup
+- **Use case**: Development, debugging, production
+
+### 🧪 **Testing MCP Methods**
+```bash
+# Test and compare different MCP communication methods
+make test-mcp-methods
+
+# Start simple HTTP MCP server for testing
+python simple_http_mcp.py
+
+# Test HTTP MCP communication
+python demo_mcp_difference.py
+```
+
+### 📊 **MCP Method Comparison**
+
+| Method | Logging | Debugging | Scalability | Use Case |
+|--------|---------|-----------|-------------|----------|
+| Stdio | ❌ Hidden | ❌ Hard | ❌ Limited | Production |
+| HTTP | ✅ Visible | ✅ Easy | ✅ Multiple clients | Development |
+
+---
+
 ## 🧩 Services Running During Demo
 
-### 🚀 Production MCP Demo
+### 🚀 Production MCP Demo (Stdio)
 | Component | Purpose | Port/Protocol |
 |------------|----------|---------------|
 | GraphQL Runtime | Metadata-driven API layer | `8000` |
 | Databricks SQL Warehouse | Actual data backend | remote |
 | Production MCP Server | AI agent communication | stdio protocol |
 | CLI Agent | Natural language → GraphQL | local process |
+
+### 🌐 HTTP MCP Demo
+| Component | Purpose | Port/Protocol |
+|------------|----------|---------------|
+| GraphQL Runtime | Metadata-driven API layer | `8000` |
+| Databricks SQL Warehouse | Actual data backend | remote |
+| HTTP MCP Server | AI agent communication | `8001` (HTTP) |
+| HTTP Agent | Natural language → GraphQL | local process |
 
 ### 🧪 Mock MCP Demo
 | Component | Purpose | Port/Protocol |
@@ -410,6 +499,95 @@ For production deployment:
 2. **Process Management**: Use systemd, Docker, or process manager
 3. **Monitoring**: Monitor stdio communication and error logs
 4. **Scaling**: Run multiple instances behind load balancer if needed
+
+---
+
+## 🌐 HTTP MCP Server Details (NEW!)
+
+### What is the HTTP MCP Server?
+
+The **HTTP MCP Server** (`mcp_server/http_server.py`) is a standalone HTTP server that provides the same MCP functionality as the stdio version but with **real-time logging and better debugging capabilities**.
+
+### Key Features
+
+#### 🔧 **HTTP API Endpoints**
+- **`GET /`** - Health check endpoint
+- **`GET /tools`** - List available tools
+- **`POST /tools/execute`** - Execute tools with arguments
+
+#### 📊 **Real-Time Logging**
+- **Tool Invocations**: See exactly when tools are called
+- **Request/Response**: Full visibility into HTTP requests
+- **Performance Metrics**: Duration and response size tracking
+- **Error Handling**: Clear error messages and stack traces
+
+#### 🔍 **Available Tools**
+- **`telecom.discover.products`** - Discover available data products
+- **`telecom.contract.get`** - Get contract details for specific products
+- **`telecom.schema.get`** - Get GraphQL schema
+- **`telecom.graphql.run`** - Execute GraphQL queries
+
+### How to Use
+
+#### 1. **Start HTTP MCP Server**
+```bash
+# Start the server
+make run-mcp-http-server
+
+# Server will be available at http://localhost:8001
+# Logs will be visible in real-time
+```
+
+#### 2. **Test HTTP Endpoints**
+```bash
+# Health check
+curl http://localhost:8001/
+
+# List tools
+curl http://localhost:8001/tools
+
+# Execute a tool
+curl -X POST http://localhost:8001/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool_name": "telecom.discover.products", "arguments": {}}'
+```
+
+#### 3. **Use HTTP Agent**
+```bash
+# Set environment variable
+export MCP_HTTP_BASE=http://localhost:8001
+
+# Run HTTP agent
+python chat/http_agent.py --ask "show payments for ACC-1002"
+```
+
+### Benefits Over Stdio MCP
+
+| Feature | Stdio MCP | HTTP MCP |
+|---------|-----------|----------|
+| **Logging** | ❌ Hidden | ✅ **Real-time visible** |
+| **Debugging** | ❌ Hard | ✅ **Easy with curl/Postman** |
+| **Monitoring** | ❌ Limited | ✅ **Full HTTP monitoring** |
+| **Multiple Clients** | ❌ One per process | ✅ **Multiple simultaneous** |
+| **Scalability** | ❌ Limited | ✅ **Better for production** |
+
+### Environment Variables
+
+```bash
+# Required for HTTP MCP server
+TELECOM_API_BASE=http://localhost:8000    # Your GraphQL API base URL
+TELECOM_GQL_PATH=/graphql                 # GraphQL endpoint path
+TELECOM_API_KEY=dev-key                   # API key for authentication
+```
+
+### Production Deployment
+
+For production deployment:
+
+1. **Process Management**: Use systemd, Docker, or process manager
+2. **Load Balancing**: Run multiple instances behind load balancer
+3. **Monitoring**: Use standard HTTP monitoring tools
+4. **Security**: Add authentication and rate limiting
 
 ---
 
@@ -566,6 +744,7 @@ Executing tool with window: 2025-09-13T00:00:00Z → 2025-10-13T17:18:06Z
 # Stop any running services
 pkill -f "uvicorn.*app.main" || true
 pkill -f "mock_mcp.py" || true
+pkill -f "http_server.py" || true
 
 # Start GraphQL API
 make run-graphql &
@@ -575,11 +754,31 @@ sleep 3
 make demo-prod
 ```
 
+### HTTP MCP Demo Reset
+```bash
+# Stop any running services
+pkill -f "uvicorn.*app.main" || true
+pkill -f "mock_mcp.py" || true
+pkill -f "http_server.py" || true
+
+# Start GraphQL API
+make run-graphql &
+sleep 3
+
+# Start HTTP MCP server
+make run-mcp-http-server &
+sleep 2
+
+# Run HTTP demo
+make demo-http
+```
+
 ### Mock MCP Demo Reset
 ```bash
 # Stop any running services
 pkill -f "uvicorn.*app.main" || true
 pkill -f "mock_mcp.py" || true
+pkill -f "http_server.py" || true
 
 # Start GraphQL API
 make run-graphql &
@@ -594,6 +793,7 @@ make demo-mock
 # Stop any running services
 pkill -f "uvicorn.*app.main" || true
 pkill -f "mock_mcp.py" || true
+pkill -f "http_server.py" || true
 
 # Start GraphQL API
 make run-graphql &
@@ -655,8 +855,28 @@ python -c "import crewai; print('CrewAI installed successfully')"
 echo $TELECOM_API_BASE
 echo $TELECOM_API_KEY
 
-# Test MCP server directly
+# Test stdio MCP server directly
 python mcp_server/server.py --help
+
+# Test HTTP MCP server
+curl http://localhost:8001/
+python mcp_server/http_server.py
+```
+
+#### **3a. HTTP MCP Server Issues**
+```bash
+# Check if port 8001 is available
+lsof -i :8001
+
+# Kill any existing HTTP MCP server
+pkill -f "http_server.py"
+
+# Start HTTP MCP server
+make run-mcp-http-server
+
+# Test HTTP endpoints
+curl http://localhost:8001/
+curl http://localhost:8001/tools
 ```
 
 #### **4. Agent Selector Not Working**
@@ -714,6 +934,7 @@ Complete system reset:
 # Stop all services
 pkill -f "uvicorn.*app.main" || true
 pkill -f "mock_mcp.py" || true
+pkill -f "http_server.py" || true
 pkill -f "python.*agent" || true
 
 # Clean up any lock files
