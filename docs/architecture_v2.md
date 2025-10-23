@@ -33,7 +33,7 @@
 - **Registry (YAML)**: Declarative DP metadata → drives the GraphQL schema & filters.
 - **GraphQL API (FastAPI + Strawberry)**: Builds types/resolvers **at startup** from Registry + table introspection.
 - **MCP Server**: Exposes tools for GraphQL execution and contract discovery.
-  - **HTTP MCP Server**: Standalone HTTP server with real-time logging (primary method)
+  - **HTTP MCP Server**: Standalone HTTP server with real-time logging and auto-discovery (primary method)
   - **Stdio MCP Server**: Traditional subprocess-based communication (legacy support)
 - **Agent Selector**: Intelligent routing between Simple Agent and CrewAI Agent based on query complexity.
 - **Simple Agent**: Fast, reliable agent for single-entity queries with basic filtering (HTTP MCP).
@@ -55,7 +55,7 @@ flowchart TD
   end
 
   subgraph Host["Local Host / Container"]
-    MCP["HTTP MCP Server<br/>(Port 8001)<br/>(telecom.graphql.run<br/>mcp_contract<br/>mcp_discovery)"]
+    MCP["HTTP MCP Server<br/>(Port 8001)<br/>(telecom.graphql.run<br/>telecom.discover.products<br/>telecom.contract.get)"]
     GQL["GraphQL API<br/>(FastAPI + Strawberry)<br/>Dynamic from Registry<br/>(Port 8000)"]
     MON["Performance Monitoring<br/>(Metrics Collection)"]
   end
@@ -76,6 +76,7 @@ flowchart TD
   SA -- HTTP (Port 8001) --> MCP
   CA -- HTTP (Port 8001) --> MCP
   MCP -- HTTP (Port 8000) --> GQL
+  MCP -- HTTP GET /.well-known/telecom.registry.index --> GQL
   GQL -- DESCRIBE + SELECT --> UC
   MON --> AS
   MON --> SA
@@ -165,9 +166,43 @@ flowchart TD
 
 ---
 
-## 4) Agent Architecture
+## 4) Registry Auto-Discovery & Refresh Points
 
-### 4.1 Simple Agent
+### 4.1 HTTP MCP Auto-Discovery
+The HTTP MCP Server uses **auto-discovery** instead of manual contract registration:
+
+- **Discovery Endpoint**: `GET /.well-known/telecom.registry.index`
+- **Contract Endpoint**: `GET /.well-known/telecom.registry/{product}.yaml`
+- **Real-time Refresh**: No caching - always reads current filesystem state
+- **No Manual Registration**: Eliminates need for `make register` step
+
+### 4.2 Registry Endpoint Refresh Points
+
+#### **Real-time Refresh (Every Request)**
+- GraphQL API reads `registry/*.yaml` files **on every request**
+- **No caching layer** - always returns current filesystem state
+- **Immediate effect**: Changes to registry files are instantly available
+
+#### **Registry File Changes**
+- **Trigger**: `make regen` updates `registry/*.yaml` files
+- **Trigger**: Manual edits to `registry/*.yaml` files
+- **Effect**: Next HTTP MCP discovery call gets updated data
+
+#### **GraphQL API Restart**
+- **Trigger**: `make run-graphql` restarts the GraphQL API
+- **Effect**: API startup reads current registry files
+
+### 4.3 Key Benefits
+- ✅ **No manual refresh needed** - endpoints are always current
+- ✅ **Real-time discovery** - HTTP MCP Server gets latest data on each call
+- ✅ **Simplified architecture** - no external MCP Registry service required
+- ✅ **Better debugging** - HTTP logs visible in real-time
+
+---
+
+## 5) Agent Architecture
+
+### 5.1 Simple Agent
 - **Purpose**: Handle single-entity queries with basic filtering
 - **Performance**: ~2-5 seconds
 - **Use Cases**: 
@@ -176,7 +211,7 @@ flowchart TD
 - **Tools**: MCP-based GraphQL execution
 - **Characteristics**: Fast, reliable, deterministic
 
-### 4.2 CrewAI Agent
+### 5.2 CrewAI Agent
 - **Purpose**: Handle complex multi-entity queries with correlation
 - **Performance**: ~30-60 seconds
 - **Use Cases**:
@@ -189,7 +224,7 @@ flowchart TD
   - `entity_correlator`: Data correlation
 - **Characteristics**: Intelligent, flexible, handles complex scenarios
 
-### 3.3 Agent Selection Criteria
+### 5.3 Agent Selection Criteria
 
 ```python
 def _is_simple_query(self, user_input: str) -> bool:
@@ -236,9 +271,9 @@ def _is_simple_query(self, user_input: str) -> bool:
 
 ---
 
-## 5) Enhanced Registry-First: Metadata Model
+## 6) Enhanced Registry-First: Metadata Model
 
-### 4.1 Current Registry Structure
+### 6.1 Current Registry Structure
 Each Data Product contributes a YAML file under `registry/` with enhanced metadata:
 
 ```yaml
@@ -270,7 +305,7 @@ entities:
     policy: { required_window: false }
 ```
 
-### 4.2 Future: Enhanced Metadata with Semantic Tags
+### 6.2 Future: Enhanced Metadata with Semantic Tags
 ```yaml
 data_product: payments
 description: "Payment processing and billing information"
@@ -304,16 +339,16 @@ entities:
 
 ---
 
-## 6) Performance Monitoring & Metrics
+## 7) Performance Monitoring & Metrics
 
-### 5.1 Metrics Collection
+### 7.1 Metrics Collection
 - **Query Performance**: Response times, success/failure rates
 - **Agent Usage**: Simple vs CrewAI agent selection
 - **Entity Detection**: Which entities are being queried
 - **Complexity Analysis**: Query complexity scoring
 - **Tool Usage**: GraphQL queries, tool calls, correlations
 
-### 5.2 Metrics Dashboard
+### 7.2 Metrics Dashboard
 ```bash
 # Generate performance report
 python -m monitoring.cli report --hours 1
@@ -351,9 +386,9 @@ python -m monitoring.cli report --hours 1
 
 ---
 
-## 7) Enhanced Request Sequence
+## 8) Enhanced Request Sequence
 
-### 6.1 Simple Query Flow
+### 8.1 Simple Query Flow
 ```mermaid
 sequenceDiagram
   participant User
@@ -379,7 +414,7 @@ sequenceDiagram
   SA-->>User: Rendered result
 ```
 
-### 6.2 Complex Query Flow
+### 8.2 Complex Query Flow
 ```mermaid
 sequenceDiagram
   participant User
@@ -394,7 +429,9 @@ sequenceDiagram
   AS->>AS: Analyze query complexity
   AS->>CA: Route to CrewAI Agent
   CA->>MON: Start query tracking
-  CA->>MCP: call tool mcp_contract
+  CA->>MCP: call tool telecom.discover.products
+  MCP->>GQL: GET /.well-known/telecom.registry.index
+  GQL-->>MCP: Registry index (real-time from filesystem)
   MCP-->>CA: Contract data
   CA->>MCP: call tool graphql_query_builder
   MCP-->>CA: Generated GraphQL query
@@ -410,7 +447,7 @@ sequenceDiagram
 
 ---
 
-## 8) Enhanced Repo Layout
+## 9) Enhanced Repo Layout
 
 ```
 .
@@ -457,7 +494,7 @@ sequenceDiagram
 
 ---
 
-## 9) Enhanced Configuration
+## 10) Enhanced Configuration
 
 **`.env` (example)**
 ```
@@ -484,7 +521,7 @@ METRICS_CSV=monitoring/metrics.csv
 
 ---
 
-## 10) Enhanced Developer Workflow
+## 11) Enhanced Developer Workflow
 
 ```bash
 # 1) Install dependencies
@@ -506,7 +543,7 @@ python chat/agent_selector.py --ask "show me all customers in India with unpaid 
 
 ---
 
-## 11) Performance Results
+## 12) Performance Results
 
 ### Before Optimization (v1):
 - **Simple Queries**: 2+ minutes (all routed to CrewAI)
@@ -522,36 +559,36 @@ python chat/agent_selector.py --ask "show me all customers in India with unpaid 
 
 ---
 
-## 12) Key Improvements in v2
+## 13) Key Improvements in v2
 
-### 11.1 Intelligent Agent Selection
+### 13.1 Intelligent Agent Selection
 - **Problem**: All queries routed to CrewAI, causing performance issues
 - **Solution**: Implemented complexity-based routing with regex pattern matching
 - **Result**: 90% performance improvement for simple queries
 
-### 11.2 Enhanced Filter Propagation
+### 13.2 Enhanced Filter Propagation
 - **Problem**: Filters not properly applied (e.g., India customers showing UAE customers)
 - **Solution**: Improved intent parsing with country mapping and filter validation
 - **Result**: Accurate filter application across all query types
 
-### 11.3 Performance Monitoring
+### 13.3 Performance Monitoring
 - **Problem**: No visibility into system performance
 - **Solution**: Comprehensive metrics collection and reporting
 - **Result**: Real-time performance insights and optimization opportunities
 
-### 11.4 CrewAI Optimization
+### 13.4 CrewAI Optimization
 - **Problem**: Infinite loops and malformed queries
 - **Solution**: Simplified workflow, better tool handling, robust error handling
 - **Result**: Reliable complex query processing
 
-### 11.5 Generic Query Building
+### 13.5 Generic Query Building
 - **Problem**: Hardcoded, narrow query building logic
 - **Solution**: Metadata-driven query building with regex-based variable extraction
 - **Result**: Extensible, maintainable query generation
 
 ---
 
-## 13) Future Enhancements (vNext)
+## 14) Future Enhancements (vNext)
 
 1. **Semantic Metadata**: Enhanced YAML with semantic tags for better intent understanding
 2. **LLM-Based Intent Parsing**: Hybrid regex/LLM approach for complex natural language
@@ -562,7 +599,7 @@ python chat/agent_selector.py --ask "show me all customers in India with unpaid 
 
 ---
 
-## 14) Conclusion
+## 15) Conclusion
 
 The v2 architecture represents a significant evolution from the initial implementation:
 

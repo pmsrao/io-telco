@@ -33,9 +33,12 @@ sequenceDiagram
 
     D->>Exp: make export
     Exp->>Git: Write contracts/*.graphql + *.openapi.yaml
-    Exp->>MCP: Register contracts via mcp_register_from_contracts.py
+    
+    note over API: GraphQL API serves registry endpoints automatically
+    API->>API: /.well-known/telecom.registry.index
+    API->>API: /.well-known/telecom.registry/{product}.yaml
 
-    note over MCP,AS: Enhanced agent discovery and intelligent routing via HTTP MCP
+    note over MCP,AS: HTTP MCP Server auto-discovers contracts via GraphQL API registry endpoints
 
     AS->>AS: Analyze query complexity
     alt Simple Query
@@ -51,7 +54,9 @@ sequenceDiagram
     else Complex Query
         AS->>CA: Route to CrewAI Agent
         CA->>MON: Start metrics collection
-        CA->>MCP: HTTP POST /tools/execute (mcp_contract)
+        CA->>MCP: HTTP POST /tools/execute (telecom.discover.products)
+        MCP->>API: GET /.well-known/telecom.registry.index
+        API-->>MCP: HTTP JSON Registry index
         MCP-->>CA: HTTP JSON Contract data
         CA->>MCP: HTTP POST /tools/execute (graphql_query_builder)
         MCP-->>CA: HTTP JSON Generated GraphQL query
@@ -103,15 +108,16 @@ flowchart TD
 
   subgraph Infra["External Systems"]
     DB[(Databricks SQL Warehouse)]
-    MCP[(MCP / Agent Registry)]
+    MCP[(HTTP MCP Server<br/>Port 8001)]
     Ollama[(Ollama LLM<br/>llama3.1)]
   end
 
   Spec --> Gen --> Reg --> SG --> API
   Reg --> Exp --> SDL
-  Exp --> OAS --> Man --> RegScript --> MCP
+  Exp --> OAS --> Man
   API --> RF --> DB
   API --> Health
+  API --> MCP
   
   AS --> SA
   AS --> CA
@@ -151,7 +157,7 @@ flowchart TD
 
 5. **Contract Management:**
    - `export_contracts.py` produces GraphQL SDL & OpenAPI specs.
-   - Contracts registered to MCP for agent discovery.
+   - HTTP MCP Server auto-discovers contracts via GraphQL API registry endpoints.
 
 6. **Performance Monitoring:**
    - Comprehensive metrics collection and reporting.
@@ -170,7 +176,7 @@ flowchart TD
 | Spec → Registry | `make regen` | Generates `registry/*.yaml` and validates schema |
 | Start Runtime | `make run-graphql` | Launches GraphQL API runtime with Strawberry |
 | Export Contracts | `make export` | Produces `.graphql` and `.openapi.yaml` contracts |
-| Register to MCP | `make register` | Posts product metadata to MCP registry |
+| Start HTTP MCP | `make run-mcp-http-server` | Launches HTTP MCP server with auto-discovery |
 | Demo with Agent Selection | `make demo-prod` | Tests both Simple and CrewAI agents with monitoring |
 | Performance Report | `python -m monitoring.cli report --hours 1` | Generates comprehensive performance metrics |
 | Individual Agent Test | `python chat/agent_selector.py --ask "query"` | Tests intelligent agent routing |
@@ -188,7 +194,7 @@ flowchart TD
 | **app/meta_graphql.py** | Dynamic GraphQL schema generation and resolvers |
 | **resolver_factory.py** | Converts GraphQL requests → Databricks SQL queries |
 | **export_contracts.py** | Emits OpenAPI + SDL contracts for each product |
-| **mcp_register_from_contracts.py** | Registers contracts into MCP registry |
+| **mcp_server/http_server.py** | HTTP MCP server with auto-discovery via GraphQL API registry endpoints |
 | **chat/agent_selector.py** | Intelligent agent routing based on query complexity |
 | **chat/simple_agent.py** | Fast agent for single-entity queries |
 | **chat/crewai_agent.py** | Complex agent for multi-entity queries |
@@ -196,7 +202,7 @@ flowchart TD
 | **telecom_crewai/agents/** | Specialized agents (query, planner, composer) |
 | **telecom_crewai/tools/** | GraphQL tools (executor, query_builder, discovery) |
 | **monitoring/** | Performance metrics collection and reporting |
-| **mcp_server/server.py** | Enhanced MCP server with multiple tools |
+| **mcp_server/server.py** | Legacy stdio MCP server (for backward compatibility) |
 
 ---
 
